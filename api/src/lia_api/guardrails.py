@@ -64,18 +64,6 @@ _MONTHS = {
     "dezembro": 12,
 }
 
-_CPF_FORMATTED = re.compile(r"(?<!\d)\d{3}\.\d{3}\.\d{3}-\d{2}(?!\d)")
-_ELEVEN_DIGITS = re.compile(r"(?<!\d)\d{11}(?!\d)")
-_CARD = re.compile(r"(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)")
-_EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}(?![\w.-])")
-_PHONE = re.compile(
-    r"(?<!\d)"
-    r"(?:\+?55[\s-]*)?"
-    r"(?:\(?\d{2}\)?[\s-]*)"
-    r"(?:9\d{4}|\d{4})[\s-]?\d{4}"
-    r"(?!\d)"
-)
-
 
 def exceeds_message_length(text: str) -> bool:
     return len(text) > MAX_CUSTOMER_MESSAGE_LENGTH
