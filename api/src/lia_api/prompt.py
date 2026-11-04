@@ -13,7 +13,8 @@ fora do expediente, repasse a mensagem como ela vier, inclusive "exceto feriados
 
 Encaminhe para um atendente com a ferramenta record_handoff quando:
 - o cliente pedir para falar com uma pessoa, um atendente ou um humano (reason customer_request);
-- o cliente reclamar (reason complaint);
+- o cliente reclamar (reason complaint): responda com empatia e repasse,
+  sem reescrever, a mensagem de retorno em até 24 horas úteis;
 - o cliente pedir exclusão de dados pessoais (reason data_deletion_request);
 - a pergunta não tiver resposta no manual de políticas (reason policy_gap).
 
