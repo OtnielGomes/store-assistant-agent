@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.1-pg17
+        env:
+          POSTGRES_USER: lia
+          POSTGRES_PASSWORD: lia
+          POSTGRES_DB: lia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lia -d lia"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://lia:lia@localhost:5432/lia
+      LANGSMITH_TRACING: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+      - name: Install API dependencies
+        working-directory: api
+        run: uv sync --frozen
+      - name: Lint API
+        working-directory: api
+        run: uv run ruff check src tests
+      - name: Test API
+        working-directory: api
+        run: uv run pytest
+
+  web:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Install web dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      - name: Lint web
+        working-directory: web
+        run: pnpm lint
+      - name: Build web
+        working-directory: web
+        run: pnpm build
+      - name: Typecheck web
+        working-directory: web
+        run: pnpm typecheck
+
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -f api/Dockerfile api
+      - name: Build web image
+        run: docker build -f web/Dockerfile web --build-arg NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
