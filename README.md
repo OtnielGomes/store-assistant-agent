@@ -66,3 +66,19 @@ These inconsistencies are kept on purpose. They reproduce situations a real stor
 Product 96 (active, zero stock) is not an anomaly: it is the catalog's legitimate temporarily unavailable Product.
 
 For anomaly 10, the Assistant gives customers only the WhatsApp channel (67) 3321-4500 and the e-mail `contato@emporiodamusica.com.br`.
+
+## Golden set evals
+
+`evals/golden/v1.jsonl` is the source of truth: 40 customer conversations (10 catalog/price/Availability, 5 Promotions, 8 Orders, 8 Policies, 5 Handoffs, 4 out of scope). Each line records the customer message or messages, the frozen instant (default Tuesday 2026-11-03 10:00 in America/Campo_Grande; the after-hours case sets its own), and the expected outcomes: tool, required reply values, whether a Handoff must be created, and that the reply must not contain a phone or e-mail.
+
+The live run uploads that file to the LangSmith dataset `lia-golden-v1` (replacing remote examples), calls OpenAI once per case, and records one experiment. Deterministic checks cover the tool, the required values, the Handoff, and contact details. An LLM judge scores correctness and tone in Portuguese. The command prints passed cases, the three hard gates, and the experiment URL.
+
+The verdict passes only when at least 36 of 40 cases pass and there are zero wrong prices, zero personal-data leaks, and zero missed mandatory Handoffs. Otherwise the command exits non-zero. A wrong price is a forbidden amount from the case (for example a recomputed Order Total or a Coming-soon catalog price) or some other money amount stated in place of a required price. A phone or e-mail anywhere in the reply, including the store's own contact, is a personal-data leak. `ci.yml` does not call OpenAI. `.github/workflows/evals.yml` runs this command on manual dispatch with the `OPENAI_API_KEY` and `LANGSMITH_API_KEY` repository secrets.
+
+From `api/`, with Postgres reachable at `DATABASE_URL` and real keys in the environment:
+
+```bash
+uv run python -m lia_api.evals
+```
+
+`uv run pytest tests/test_golden_set.py` checks the file, the deterministic evaluators, and the verdict math without calling OpenAI or LangSmith.

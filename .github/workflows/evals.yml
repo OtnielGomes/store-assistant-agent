@@ -1,0 +1,41 @@
+name: Evals
+
+on:
+  workflow_dispatch:
+
+jobs:
+  golden-set:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.1-pg17
+        env:
+          POSTGRES_USER: lia
+          POSTGRES_PASSWORD: lia
+          POSTGRES_DB: lia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lia -d lia"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://lia:lia@localhost:5432/lia
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+      LANGSMITH_TRACING: "true"
+      LANGSMITH_PROJECT: emporio-da-musica
+      APP_ENV: development
+      APP_TIMEZONE: America/Campo_Grande
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+      - name: Install API dependencies
+        working-directory: api
+        run: uv sync --frozen
+      - name: Run golden set
+        working-directory: api
+        run: uv run python -m lia_api.evals
