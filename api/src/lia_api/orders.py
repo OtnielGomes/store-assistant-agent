@@ -14,7 +14,6 @@ from lia_api.clock import SystemClock
 
 _LOCK_AFTER_FAILURES = 3
 _OPEN_STATUSES = ("pending", "confirmed", "shipped")
-_PIX_FACTOR = Decimal("0.95")
 
 _FAILURES_TABLE = """
 CREATE TABLE IF NOT EXISTS order_verification_failures (
@@ -33,12 +32,6 @@ SELECT
     o.tracking_code,
     o.estimated_delivery,
     CASE WHEN o.status = 'cancelled' THEN o.notes END AS cancellation_reason,
-    (
-        SELECT COALESCE(SUM(oi.quantity * p.price), 0)
-        FROM order_items AS oi
-        JOIN products AS p ON p.product_id = oi.product_id
-        WHERE oi.order_id = o.order_id
-    ) AS items_total,
     EXISTS (
         SELECT 1
         FROM order_items AS oi
@@ -199,18 +192,12 @@ def _present(
 
 
 def _anomaly_flags(row: dict[str, object], today: date) -> list[str]:
-    items_total = _cents(row["items_total"])
-    order_total = _cents(row["total"])
     estimated = row["estimated_delivery"]
     flags: list[str] = []
     if row["status"] in _OPEN_STATUSES and isinstance(estimated, date) and estimated < today:
         flags.append("overdue_delivery")
     if row["coming_soon_in_open_order"]:
         flags.append("coming_soon_item_in_open_order")
-    if order_total != items_total:
-        flags.append("total_differs_from_items")
-    if row["payment_method"] == "pix" and order_total != _cents(items_total * _PIX_FACTOR):
-        flags.append("pix_without_discount")
     return sorted(flags)
 
 

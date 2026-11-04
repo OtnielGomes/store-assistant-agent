@@ -26,7 +26,7 @@ ORDERS: list[dict[str, object]] = [
             {"name": "Martin D-28 Dreadnought Natural", "quantity": 1, "status": "active"},
         ],
         "cancellation_reason": None,
-        "anomaly_flags": ["pix_without_discount"],
+        "anomaly_flags": [],
     },
     {
         "order_number": 2,
@@ -66,7 +66,7 @@ ORDERS: list[dict[str, object]] = [
             {"name": "Kala KA-ABP-CTG Barítono Cedar", "quantity": 2, "status": "coming_soon"},
         ],
         "cancellation_reason": None,
-        "anomaly_flags": ["total_differs_from_items"],
+        "anomaly_flags": [],
     },
     {
         "order_number": 4,
@@ -106,7 +106,7 @@ ORDERS: list[dict[str, object]] = [
             {"name": "Crafter D-8 Dreadnought Natural", "quantity": 1, "status": "active"},
         ],
         "cancellation_reason": None,
-        "anomaly_flags": ["pix_without_discount"],
+        "anomaly_flags": [],
     },
     {
         "order_number": 6,
@@ -206,7 +206,7 @@ ORDERS: list[dict[str, object]] = [
             {"name": "Music Man Bass 1X Electric Bass", "quantity": 1, "status": "active"},
         ],
         "cancellation_reason": None,
-        "anomaly_flags": ["pix_without_discount"],
+        "anomaly_flags": [],
     },
     {
         "order_number": 11,
@@ -270,7 +270,7 @@ ORDERS: list[dict[str, object]] = [
             },
         ],
         "cancellation_reason": None,
-        "anomaly_flags": ["pix_without_discount"],
+        "anomaly_flags": [],
     },
     {
         "order_number": 14,
@@ -351,7 +351,7 @@ ORDERS: list[dict[str, object]] = [
             {"name": "Giannini GN-15 Nylon Cedr Natural", "quantity": 1, "status": "active"},
         ],
         "cancellation_reason": "Pedido cancelado pelo cliente antes do processamento",
-        "anomaly_flags": ["pix_without_discount"],
+        "anomaly_flags": [],
     },
     {
         "order_number": 18,
@@ -412,7 +412,7 @@ ORDERS: list[dict[str, object]] = [
             {"name": "Shelby SGD-195E Elétrico Aço Sunburst", "quantity": 1, "status": "active"},
         ],
         "cancellation_reason": "Endereço de entrega inválido informado pelo cliente",
-        "anomaly_flags": ["total_differs_from_items"],
+        "anomaly_flags": [],
     },
 ]
 

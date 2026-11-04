@@ -52,17 +52,17 @@ These inconsistencies are kept on purpose. They reproduce situations a real stor
 
 | # | Anomaly | Records |
 |---|---|---|
-| 1 | Order Total differs from the sum of its items at current prices | Order 3 (R$ 3.450,00 vs R$ 3.498,00), order 20 (R$ 1.400,00 vs R$ 1.488,00) |
-| 2 | PIX orders recorded without the manual's 5% PIX discount | Orders 1, 5, 10, 13, 17 |
-| 3 | Coming-soon Product present in orders | Product 130 in order 3 (delivered) and order 14 (pending) |
-| 4 | Discontinued Product with units in stock | Product 136 (13 units) |
-| 5 | Shipped order past its estimated delivery | Order 8 (shipped 2026-09-27, estimated 2026-10-10) |
-| 6 | Campo Grande orders estimated at 10–15 days, while the manual promises 1–3 business days in the metropolitan area | Orders 1, 2, 3, 4, 5, 7, 8 |
-| 7 | Categories the manual says the store sells but that have no Products | Categories 6, 7, 8 (wind and orchestral strings), treated as Unstocked Categories |
-| 8 | Black Friday promotion below the manual's 15–30% range (inactive) | Promotion 1 (10%) |
-| 9 | Same Product with more than one promotion (all inactive) | Products 93, 96, 99 |
-| 10 | Manual lists two phone numbers and a misspelled e-mail | Section 1.2 lists (67) 3341-4444 as "Telefone / WhatsApp" and `contato@empóriodamusica.com.br`; section 7 names (67) 3321-4500 as the WhatsApp channel |
+| 1 | Coming-soon Product present in orders | Product 130 in order 3 (delivered) and order 14 (pending) |
+| 2 | Discontinued Product with units in stock | Product 136 (13 units) |
+| 3 | Shipped order past its estimated delivery | Order 8 (shipped 2026-09-27, estimated 2026-10-10) |
+| 4 | Campo Grande orders estimated at 10–15 days, while the manual promises 1–3 business days in the metropolitan area | Orders 1, 2, 3, 4, 5, 7, 8 |
+| 5 | Categories the manual says the store sells but that have no Products | Categories 6, 7, 8 (wind and orchestral strings), treated as Unstocked Categories |
+| 6 | Black Friday promotion below the manual's 15–30% range (inactive) | Promotion 1 (10%) |
+| 7 | Same Product with more than one promotion (all inactive) | Products 93, 96, 99 |
+| 8 | Manual lists two phone numbers and a misspelled e-mail | Section 1.2 lists (67) 3341-4444 as "Telefone / WhatsApp" and `contato@empóriodamusica.com.br`; section 7 names (67) 3321-4500 as the WhatsApp channel |
 
 Product 96 (active, zero stock) is not an anomaly: it is the catalog's legitimate temporarily unavailable Product.
 
-For anomaly 10, the Assistant gives customers only the WhatsApp channel (67) 3321-4500 and the e-mail `contato@emporiodamusica.com.br`.
+An Order Total is the amount recorded on the Order. The Assistant reports that amount and does not compare it with item prices or with the PIX discount.
+
+For anomaly 8, the Assistant gives customers only the WhatsApp channel (67) 3321-4500 and the e-mail `contato@emporiodamusica.com.br`.
