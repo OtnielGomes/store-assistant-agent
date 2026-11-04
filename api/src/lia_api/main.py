@@ -2,8 +2,12 @@ from typing import Literal
 
 import psycopg
 from fastapi import FastAPI
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
+from lia_api.graph import build_graph
+from lia_api.model import build_chat_model, configure_langsmith
 from lia_api.settings import load_settings
 
 
@@ -12,18 +16,54 @@ class HealthResponse(BaseModel):
     database: Literal["connected", "unavailable"]
 
 
-def create_app() -> FastAPI:
+class ChatRequest(BaseModel):
+    conversation_id: str
+    message: str
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    handoff: None = None
+
+
+def _reply_text(content: str | list[str | dict[str, object]]) -> str:
+    if isinstance(content, str):
+        return content
+    parts: list[str] = []
+    for block in content:
+        if isinstance(block, str):
+            parts.append(block)
+        elif isinstance(block, dict) and block.get("type") == "text":
+            parts.append(str(block.get("text", "")))
+    return "".join(parts)
+
+
+def create_app(model: BaseChatModel | None = None) -> FastAPI:
+    settings = load_settings()
+    configure_langsmith(settings)
+    chat_model = model
+    if chat_model is None and settings.openai_api_key:
+        chat_model = build_chat_model(settings)
+    graph = build_graph(chat_model) if chat_model is not None else None
     app = FastAPI(title="Lia")
 
     @app.get("/health")
     def health() -> HealthResponse:
-        settings = load_settings()
+        current = load_settings()
         try:
-            with psycopg.connect(settings.database_url, connect_timeout=5) as connection:
+            with psycopg.connect(current.database_url, connect_timeout=5) as connection:
                 connection.execute("SELECT 1")
         except psycopg.Error:
             return HealthResponse(status="unhealthy", database="unavailable")
         return HealthResponse(status="healthy", database="connected")
+
+    @app.post("/chat")
+    def chat(request: ChatRequest) -> ChatResponse:
+        if graph is None:
+            raise RuntimeError("OPENAI_API_KEY is required before Lia can answer.")
+        result = graph.invoke({"messages": [HumanMessage(content=request.message)]})
+        reply = _reply_text(result["messages"][-1].content)
+        return ChatResponse(reply=reply)
 
     return app
 

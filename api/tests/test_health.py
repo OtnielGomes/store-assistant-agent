@@ -12,6 +12,7 @@ def test_health_reports_database_connectivity(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setenv("DATABASE_URL", database_url)
     monkeypatch.setenv("OPENAI_REASONING_EFFORT", "none")
     monkeypatch.delenv("OPENAI_TEMPERATURE", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     from lia_api.main import create_app
 
