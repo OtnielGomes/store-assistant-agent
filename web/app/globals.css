@@ -89,11 +89,93 @@ body {
   cursor: pointer;
 }
 
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.sheet-link {
+  color: var(--color-brass);
+  font-size: 0.92rem;
+  text-decoration: none;
+}
+
 .new-chat:focus-visible,
 .send:focus-visible,
-.composer input:focus-visible {
+.sheet-link:focus-visible,
+.composer input:focus-visible,
+.dev-clock input:focus-visible {
   outline: 2px solid var(--color-brass);
   outline-offset: 2px;
+}
+
+.dev-clock {
+  display: grid;
+  gap: 4px;
+  padding: 10px 14px 12px;
+  background: #e7d7b4;
+  color: var(--color-ink);
+}
+
+.dev-clock input {
+  border: 0;
+  background: #fffaf0;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 1rem;
+  padding: 8px 10px;
+}
+
+.dev-clock-note {
+  color: #5c4636;
+  font-size: 0.92rem;
+}
+
+.ledger {
+  display: flex;
+  width: min(720px, 100%);
+  min-height: 100dvh;
+  flex-direction: column;
+  background: var(--color-sheet);
+  color: var(--color-ink);
+  box-shadow: 0 0 0 1px rgb(200 146 42 / 45%);
+}
+
+.ledger-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 22px 28px;
+}
+
+.queue-entry {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 112px;
+  padding: 16px 0 14px;
+  border-top: 1px solid rgb(200 146 42 / 55%);
+}
+
+.queue-reason {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 560;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.queue-summary {
+  max-width: 62ch;
+  margin: 8px 0 0;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.queue-meta {
+  margin: 8px 0 0;
+  color: #5c4636;
+  line-height: 1.45;
 }
 
 .thread {
@@ -222,7 +304,8 @@ body {
     padding: 24px;
   }
 
-  .phone {
+  .phone,
+  .ledger {
     min-height: calc(100dvh - 48px);
     height: calc(100dvh - 48px);
   }

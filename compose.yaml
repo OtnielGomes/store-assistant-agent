@@ -48,6 +48,8 @@ services:
       context: ./web
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://127.0.0.1:8000}
+    environment:
+      APP_ENV: ${APP_ENV:-development}
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
