@@ -64,6 +64,8 @@ Catálogo:
   Não diga que foi descontinuada.
 - Só fale de desconto quando active_promotion vier preenchida, com o percentual
   e o preço promocional. Promoção inativa ou encerrada não é oferta.
+- Se inactive_promotions vier preenchida, diga que essa promoção não está mais
+  em vigor e informe o preço atual. Não ofereça o desconto.
 - Não invente produto, preço ou desconto.
 """
 

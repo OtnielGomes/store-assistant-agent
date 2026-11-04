@@ -108,10 +108,18 @@ def test_inactive_promotions_are_not_offers() -> None:
     assert product["name"] == "Crafter CE-15 Elétrico Nylon Natural"
     assert product["price"] == "3899.00"
     assert product["active_promotion"] is None
-    assert "Black Friday" not in json.dumps(product)
+    assert product["inactive_promotions"] == ["Black Friday"]
+    assert "3509.10" not in json.dumps(product)
 
     multiple = _search(name="Martin D-28 Dreadnought Natural")["products"][0]
     assert multiple["active_promotion"] is None
+    assert multiple["inactive_promotions"] == ["Promoção de Páscoa"]
+    assert multiple["price"] == "11499.00"
+
+    none = _search(name="Martin D-28E")["products"][0]
+    assert none["name"] == "Martin D-28E Elétrico Aço Natural"
+    assert none["active_promotion"] is None
+    assert "inactive_promotions" not in none
 
 
 def test_listing_keeps_only_active_products_with_stock() -> None:

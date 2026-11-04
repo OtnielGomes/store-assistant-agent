@@ -17,7 +17,13 @@ SELECT
     p.price,
     p.status,
     p.stock_quantity,
-    promo.discount_percent
+    promo.discount_percent,
+    (
+        SELECT COALESCE(array_agg(pr.description ORDER BY pr.promotion_id), ARRAY[]::text[])
+        FROM promotions AS pr
+        WHERE pr.product_id = p.product_id
+          AND NOT pr.is_active
+    ) AS inactive_promotions
 FROM products AS p
 JOIN categories AS c ON c.category_id = p.category_id
 LEFT JOIN LATERAL (
@@ -48,8 +54,9 @@ def build_catalog_search_tool(database_url: str):
         de tabela em reais) e specs (valores exatos, por exemplo strings=nylon).
         Produto descontinuado, em breve ou temporariamente indisponível inclui
         alternatives: produtos ativos com estoque na mesma categoria. Categoria
-        sem nenhum produto volta em unstocked_categories. A resposta não traz
-        quantidade em estoque.
+        sem nenhum produto volta em unstocked_categories. Na busca por nome,
+        promoções só inativas voltam em inactive_promotions, sem preço
+        promocional. A resposta não traz quantidade em estoque.
         """
         price = Decimal(maximum_price) if maximum_price else None
         result = execute_catalog_search(
@@ -119,9 +126,15 @@ def execute_catalog_search(
             ).fetchall()
             unstocked = [row["name"] for row in unstocked_rows]
         products = [
-            _present(row, _alternatives(connection, row, maximum_price, spec_filter))
-            if name_pattern is not None and not _is_buyable(row)
-            else _present(row)
+            _present(
+                row,
+                _alternatives(connection, row, maximum_price, spec_filter)
+                if name_pattern is not None and not _is_buyable(row)
+                else None,
+                inactive_promotions=_named_inactive_promotions(row)
+                if name_pattern is not None
+                else None,
+            )
             for row in rows
         ]
     return {"products": products, "unstocked_categories": unstocked}
@@ -154,13 +167,19 @@ def _alternatives(
     return [_present(row) for row in rows]
 
 
-def _present(row: dict[str, object], alternatives: list[dict[str, object]] | None = None) -> dict:
+def _present(
+    row: dict[str, object],
+    alternatives: list[dict[str, object]] | None = None,
+    inactive_promotions: list[str] | None = None,
+) -> dict:
     product: dict[str, object] = {
         "name": row["name"],
         "category": row["category"],
         "status": row["status"],
         "active_promotion": _promotion(row),
     }
+    if inactive_promotions:
+        product["inactive_promotions"] = inactive_promotions
     if row["status"] == "active":
         product["availability"] = (
             "available" if int(row["stock_quantity"]) > 0 else "temporarily_unavailable"
@@ -170,6 +189,20 @@ def _present(row: dict[str, object], alternatives: list[dict[str, object]] | Non
     if alternatives is not None:
         product["alternatives"] = alternatives
     return product
+
+
+def _named_inactive_promotions(row: dict[str, object]) -> list[str] | None:
+    """Descriptions of inactive promotions when the product has no active one."""
+    if row["discount_percent"] is not None or row["status"] == "coming_soon":
+        return None
+    descriptions = row.get("inactive_promotions") or []
+    if not isinstance(descriptions, list):
+        return None
+    unique: list[str] = []
+    for description in descriptions:
+        if isinstance(description, str) and description not in unique:
+            unique.append(description)
+    return unique or None
 
 
 def _promotion(row: dict[str, object]) -> dict[str, str] | None:

@@ -1,5 +1,6 @@
 import json
 import os
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -33,7 +34,7 @@ def _ask(monkeypatch: pytest.MonkeyPatch, message: str, tool_args: dict[str, obj
     with TestClient(create_app(model=model)) as client:
         response = client.post(
             "/chat",
-            json={"conversation_id": f"catalog-{message[:24]}", "message": message},
+            json={"conversation_id": f"catalog-{uuid4()}", "message": message},
         )
     assert response.status_code == 200
     assert response.json()["reply"] == reply
@@ -135,7 +136,10 @@ def test_chat_answers_unstocked_category(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_chat_does_not_offer_an_expired_promotion(monkeypatch: pytest.MonkeyPatch) -> None:
-    reply = "O Crafter CE-15 não tem promoção ativa no momento. O preço é R$ 3899.00."
+    reply = (
+        "A Black Friday do Crafter CE-15 não está mais em vigor. "
+        "O preço atual é R$ 3899.00."
+    )
     result = _ask(
         monkeypatch,
         "O Crafter CE-15 está na Black Friday?",
@@ -146,4 +150,5 @@ def test_chat_does_not_offer_an_expired_promotion(monkeypatch: pytest.MonkeyPatc
     product = result["products"][0]
     assert product["price"] == "3899.00"
     assert product["active_promotion"] is None
-    assert "Black Friday" not in json.dumps(product)
+    assert product["inactive_promotions"] == ["Black Friday"]
+    assert "3509.10" not in json.dumps(product)
