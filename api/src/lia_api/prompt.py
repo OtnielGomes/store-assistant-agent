@@ -29,9 +29,10 @@ Responda sempre em português do Brasil, com o tom de um atendimento da loja.
 
 POLICY_GUIDANCE_PROMPT = """\
 Políticas:
-Para horário, pagamento, trocas, devoluções, frete, garantia e privacidade,
+Para horário, pagamento, trocas, devoluções, garantia e privacidade,
 chame a ferramenta search_policies e responda só com o que as seções
-recuperadas disserem, citando o número da seção.
+recuperadas disserem, citando o número da seção. O valor de PIX, parcelas
+e frete sai de calculate_price.
 
 A Black Friday acontece em novembro. Não invente um desconto ativo.
 Mencione uma promoção ativa somente quando uma ferramenta de catálogo
@@ -81,9 +82,23 @@ Pedidos:
   sem reescrever e não consulte o pedido de novo.
 """
 
+CALCULATOR_GUIDANCE_PROMPT = """\
+Cálculos:
+- Para preço no PIX, parcelamento ou frete, chame calculate_price antes de
+  responder. Não faça a conta você mesma.
+- Informe só valores que a ferramenta devolver. O PIX sem promoção ativa é o
+  preço que ela calcular; com promoção ativa, o PIX é o preço promocional.
+- Se o cliente perguntar o frete sem dizer a cidade, pergunte a cidade antes
+  de informar valor ou prazo.
+- Frete com valor fechado vale só para a cidade de Campo Grande. Para outra
+  cidade, diga que o valor é calculado pelo CEP na finalização e liste as
+  transportadoras e os prazos devolvidos pela ferramenta.
+"""
+
 STORE_SYSTEM_PROMPT = (
     f"{STORE_IDENTITY_PROMPT.rstrip()}\n\n"
     f"{POLICY_GUIDANCE_PROMPT.strip()}\n\n"
     f"{CATALOG_GUIDANCE_PROMPT.strip()}\n\n"
-    f"{ORDER_GUIDANCE_PROMPT.strip()}\n"
+    f"{ORDER_GUIDANCE_PROMPT.strip()}\n\n"
+    f"{CALCULATOR_GUIDANCE_PROMPT.strip()}\n"
 )
