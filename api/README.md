@@ -1,3 +1,3 @@
 # lia-api
 
-Python API for Lia. Setup for the full stack lives in the repository README.
+Python API for Lia. Full-stack setup: [README.md](../README.md) (EN) · [README.pt-BR.md](../README.pt-BR.md) (PT).
