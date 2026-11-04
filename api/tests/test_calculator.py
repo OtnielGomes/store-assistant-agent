@@ -167,6 +167,17 @@ def test_campo_grande_charges_35_at_500_and_is_free_only_above_it() -> None:
     assert ohana["shipping"]["cost"] == "35.00"
 
 
+def test_shipping_carriers_are_not_read_from_the_policy_pdf(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    (tmp_path / "políticas_da_loja.pdf").write_bytes(b"%PDF-1.4\n")
+    monkeypatch.setattr("lia_api.calculator.data_dir", lambda: tmp_path)
+
+    with pytest.raises(RuntimeError, match="were not found in the manual"):
+        _calculate(order_total="800.00", city="Dourados")
+
+
 def test_other_cities_are_priced_from_the_cep_with_manual_carriers() -> None:
     result = _calculate(order_total="800.00", city="Dourados")
 
