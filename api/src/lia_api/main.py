@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from lia_api.clock import FrozenClock, SystemClock
 from lia_api.graph import build_graph
+from lia_api.guardrails import exceeds_message_length, mask_personal_data
 from lia_api.handoff import HandoffStore, build_record_handoff_tool
 from lia_api.model import build_chat_model, configure_langsmith
 from lia_api.policies import Embedder, openai_embedder
@@ -129,6 +130,7 @@ def create_app(
                 [handoff_tool],
                 database_url=settings.database_url,
                 embedder=policy_embedder,
+                handoff_store=store,
             )
             yield
 
@@ -178,8 +180,14 @@ def create_app(
             http_request.app.state.clock,
             request.simulated_at,
         )
+        # Mask before the graph so checkpoints and traces never store raw personal data.
+        customer_message = request.message
+        if exceeds_message_length(customer_message):
+            customer_message = "x" * len(customer_message)
+        else:
+            customer_message = mask_personal_data(customer_message)
         result = graph.invoke(
-            {"messages": [HumanMessage(content=request.message)]},
+            {"messages": [HumanMessage(content=customer_message)]},
             {
                 "configurable": {
                     "thread_id": request.conversation_id,
