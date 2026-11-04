@@ -1,0 +1,3 @@
+# PostgreSQL as the only datastore
+
+We chose simplicity over specialized stores: PostgreSQL alone holds the Facts, the policy chunks with their embeddings (`pgvector` plus Portuguese full-text search), the conversation memory (LangGraph checkpointer), and the Handoff queue. Redis, Valkey, MongoDB, a dedicated vector database, or any cache layer were rejected because nothing in this scope needs them: a single API instance, 65 Products, and an 8-page manual. One database means one container, one backup, one connection pool, and one place to look when debugging. Revisit only if the API runs as several replicas that must share sessions or rate limits.

@@ -1,0 +1,3 @@
+# Policies come from a reviewed Markdown transcription, retrieved by hybrid search
+
+The policy manual is transcribed once, by hand, from the PDF into a versioned Markdown file and chunked by numbered section, so each chunk carries its section number; automatic PDF extraction was rejected because it breaks the manual's tables (opening hours, payment, shipping). Retrieval combines Portuguese full-text search with embedding similarity in PostgreSQL: lexical search alone answers questions that reuse the manual's wording, and embeddings cover paraphrases that do not. Putting the whole manual in the prompt would also fit (about 6k tokens), but per-section retrieval keeps every Policy answer traceable to a section.

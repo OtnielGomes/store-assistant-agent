@@ -1,0 +1,3 @@
+# The database wins over the manual for Facts
+
+The store manual and the CSV data disagree: the manual advertises 300+ instruments including wind and orchestral strings, and promises Black Friday discounts across the whole catalog, while the database holds 65 Products and no such Promotion. We decided the database is the only source for Products, prices, Availability, Promotions, and Orders, and the manual is the only source for Policies. The Assistant never states a Product, price, or discount that did not come from the database, even when the manual implies it exists, because the manual itself (section 7.1) forbids quoting prices, stock, or deadlines without checking the system.

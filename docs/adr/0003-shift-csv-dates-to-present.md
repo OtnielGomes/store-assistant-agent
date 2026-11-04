@@ -1,0 +1,3 @@
+# Shift CSV dates forward by 224 days at load time
+
+The CSVs are a snapshot taken on Monday 2026-03-23, so against the real clock every pending Order would look months old and every exchange window would be long expired. The loader adds a fixed 224 days (exactly 32 weeks, preserving weekdays) to every date column, moving the snapshot to Monday 2026-11-02, while the raw CSVs stay untouched. The offset is fixed rather than computed at load time so the golden set's expected answers stay stable; the application clock is injectable, reading the real time in `America/Campo_Grande` in normal use, a frozen instant in tests and evals, and, in development mode only, a simulated date and time sent by the UI so after-hours behavior can be tested by hand without restarting anything.

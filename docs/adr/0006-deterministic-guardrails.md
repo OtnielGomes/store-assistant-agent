@@ -1,0 +1,3 @@
+# Guardrails are deterministic code, not a second LLM
+
+Input is checked in code: a length limit, and masking of CPF, card numbers, full phone numbers, and e-mails before the message reaches the LLM or the traces (LGPD). Output is checked in code too: every price and date in a reply must appear in the tool results of that same turn; otherwise the reply is regenerated once and, if it fails again, replaced by a safe message plus a Handoff. An LLM-based classifier was rejected because it adds cost and latency without proportional gain in this scope; off-topic and manipulation attempts are handled by the prompt and the limited toolset, and covered by the golden set. Because the output check needs the full reply, responses are not streamed token by token.
