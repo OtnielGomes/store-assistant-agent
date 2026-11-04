@@ -2,18 +2,27 @@
 
 Assistente virtual de atendimento do Empório da Música, loja de instrumentos musicais em Campo Grande (MS). O vocabulário do domínio está em [GLOSSARY.md](./GLOSSARY.md) e as decisões de arquitetura em [docs/adr/](./docs/adr/).
 
-## Como subir
+## Como copiar e rodar
 
-Copie o ambiente de exemplo e suba o PostgreSQL, a API e a aplicação web:
+É preciso Git e Docker com Compose. Para os testes da API no host, Python 3.13 e [uv](https://docs.astral.sh/uv/). Para a aplicação web fora do Compose, Node.js e pnpm 10.15.1.
 
 ```bash
+git clone https://github.com/OtnielGomes/store-assistant-agent.git
+cd store-assistant-agent
 cp .env.example .env
+```
+
+No PowerShell, a cópia do ambiente é `Copy-Item .env.example .env`.
+
+Coloque uma `OPENAI_API_KEY` real no `.env` antes de esperar uma resposta ao vivo. O rastreamento no LangSmith segue `LANGSMITH_TRACING`, `LANGSMITH_API_KEY` e `LANGSMITH_PROJECT`. O `.env.example` lista todas as configurações. Os padrões do modelo são `gpt-6-luna`, esforço de raciocínio `none` e embeddings `text-embedding-3-small`. A temperatura só é enviada quando `OPENAI_TEMPERATURE` está definida, porque o `gpt-6-luna` rejeita `0`. A inicialização falha quando `OPENAI_TEMPERATURE` está definida e `OPENAI_REASONING_EFFORT` não é `none`.
+
+Suba o PostgreSQL, a carga dos dados, a API e a aplicação web:
+
+```bash
 docker compose up --build
 ```
 
-Abra http://127.0.0.1:3000 e converse com a Lia. A API escuta em http://127.0.0.1:8000 (`GET /health`, `POST /chat`).
-
-O `.env.example` lista todas as configurações. Os padrões do modelo são `gpt-6-luna`, esforço de raciocínio `none` e embeddings `text-embedding-3-small`. A temperatura só é enviada quando `OPENAI_TEMPERATURE` está definida, porque o `gpt-6-luna` rejeita `0`. A inicialização falha quando `OPENAI_TEMPERATURE` está definida e `OPENAI_REASONING_EFFORT` não é `none`. Coloque uma `OPENAI_API_KEY` real no `.env` antes de esperar uma resposta ao vivo. O rastreamento no LangSmith segue `LANGSMITH_TRACING`, `LANGSMITH_API_KEY` e `LANGSMITH_PROJECT`.
+Abra http://127.0.0.1:3000 e converse com a Lia. A API escuta em http://127.0.0.1:8000 (`GET /health`, `POST /chat`). Para encerrar, `docker compose down` na raiz do repositório.
 
 O Compose publica o Postgres em `127.0.0.1:54330` e substitui `DATABASE_URL` dentro do container da API para usar o serviço `db`. Os testes da API no host usam esse banco publicado e um modelo de chat roteirizado, então não chamam a OpenAI:
 
@@ -22,6 +31,15 @@ cd api
 DATABASE_URL=postgresql://lia:lia@127.0.0.1:54330/lia uv sync
 DATABASE_URL=postgresql://lia:lia@127.0.0.1:54330/lia uv run ruff check src tests
 DATABASE_URL=postgresql://lia:lia@127.0.0.1:54330/lia uv run pytest
+```
+
+No PowerShell, a partir de `api/`:
+
+```powershell
+$env:DATABASE_URL = "postgresql://lia:lia@127.0.0.1:54330/lia"
+uv sync
+uv run ruff check src tests
+uv run pytest
 ```
 
 A aplicação web, a partir de `web/`:
@@ -96,3 +114,35 @@ uv run python -m lia_api.evals
 ```
 
 `uv run pytest tests/test_golden_set.py` confere o arquivo, os avaliadores determinísticos e a conta do veredito sem chamar a OpenAI nem o LangSmith.
+
+### Três experimentos ao vivo
+
+O mesmo conjunto de 41 perguntas foi executado três vezes no LangSmith, com `uv run python -m lia_api.evals` a partir de `api/`. A meta do veredito é 37/41, sem preço errado, sem vazamento de dado pessoal e sem encaminhamento obrigatório perdido.
+
+| Experimento | O que mudou | Aprovados |
+|---|---|---|
+| `lia-golden-v1-555ac1bc` | Desenvolvimento do agente. Simulações de consulta, inclusive preço. | 10/41 |
+| `lia-golden-v1-319b3b13` | Ajuste do prompt, dos fluxos de chat e da linguagem da Lia. | 35/41 |
+| `lia-golden-v1-571301ac` | Nova correção, de novo sobre as mesmas 41 perguntas. | 40/41 |
+
+O primeiro experimento não passou. No gráfico, o juiz de português ficou perto de 30%. Os dois seguintes subiram para 35 e depois 40 aprovados, acima da meta de 37.
+
+![Comparação dos três experimentos no LangSmith](images/Compara%C3%A7%C3%A3o%20dos%203%20experimetos%20do%20langsmith.png)
+
+![Terceiro experimento, com as barras de feedback mais altas](images/3%20experimeto%20prototipofinal.png)
+
+## Demonstração
+
+A conversa abaixo foi feita na interface local, com horário simulado.
+
+![Saudação da Lia](images/Sauda%C3%A7%C3%A3o.png)
+
+![Violões disponíveis até R$ 1.000](images/exemplo%20de%20pergunta%201.png)
+
+![Endereço da loja](images/exemplo%20de%20pergunta%202.png)
+
+![Preço do Takamine GD20 e promoção encerrada](images/exemplo%20pergunta%203.png)
+
+![Prazo de devolução por arrependimento](images/exemplo%20de%20pergunta%204.png)
+
+![Consulta do pedido 8 com os quatro últimos dígitos](images/exemplo%20pergunta%205.png)
