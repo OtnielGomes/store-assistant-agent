@@ -5,6 +5,7 @@ service can call ``load_policy_chunks`` with an open connection. Embeddings
 are produced by an injected function so tests never call OpenAI.
 """
 
+import os
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -157,7 +158,7 @@ def load_policy_chunks(
     manual_path: Path | None = None,
 ) -> int:
     """Store one chunk per numbered section. Safe to call again."""
-    path = manual_path or _MANUAL_PATH
+    path = manual_path or _default_manual_path()
     sections = parse_policy_manual(path.read_text(encoding="utf-8"))
     if not sections:
         raise ValueError(f"No numbered sections in {path}")
@@ -248,6 +249,13 @@ def search_policies(
         PolicyHit(section_number=section_number, title=title, content=content)
         for section_number, title, content in rows
     ]
+
+
+def _default_manual_path() -> Path:
+    configured = os.environ.get("DATA_DIR")
+    if configured:
+        return Path(configured) / "manual" / "politicas_da_loja.md"
+    return _MANUAL_PATH
 
 
 def _embedding_text(section: PolicySection) -> str:

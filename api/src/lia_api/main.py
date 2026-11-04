@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from lia_api.graph import build_graph
 from lia_api.model import build_chat_model, configure_langsmith
-from lia_api.policies import Embedder, build_policy_search_tool, openai_embedder
+from lia_api.policies import Embedder, openai_embedder
 from lia_api.settings import Settings, load_settings
 
 
@@ -63,10 +63,7 @@ def create_app(
     chat_model = model
     if chat_model is None and settings.openai_api_key:
         chat_model = build_chat_model(settings)
-    policy_tool = build_policy_search_tool(
-        settings.database_url,
-        embedder if embedder is not None else _lazy_openai_embedder(settings),
-    )
+    policy_embedder = embedder if embedder is not None else _lazy_openai_embedder(settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -76,7 +73,12 @@ def create_app(
             return
         with PostgresSaver.from_conn_string(settings.database_url) as checkpointer:
             checkpointer.setup()
-            app.state.graph = build_graph(chat_model, checkpointer, tools=[policy_tool])
+            app.state.graph = build_graph(
+                chat_model,
+                checkpointer,
+                database_url=settings.database_url,
+                embedder=policy_embedder,
+            )
             yield
 
     app = FastAPI(title="Lia", lifespan=lifespan)
