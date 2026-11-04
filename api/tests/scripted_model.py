@@ -1,16 +1,14 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from typing import Any
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
-from langchain_core.runnables import Runnable
-from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, PrivateAttr
 
 
 class ScriptedToolCall(BaseModel):
-    """A predetermined tool call emitted before the next scripted reply."""
+    """A predetermined tool call emitted by the fake chat model."""
 
     name: str
     args: dict[str, Any] = Field(default_factory=dict)
@@ -34,16 +32,8 @@ class ScriptedChatModel(BaseChatModel):
     def calls(self) -> list[list[BaseMessage]]:
         return self._calls
 
-    def bind_tools(
-        self,
-        tools: Sequence[dict[str, Any] | type | Callable[..., Any] | BaseTool],
-        *,
-        tool_choice: str | None = None,
-        **kwargs: Any,
-    ) -> Runnable[Any, AIMessage]:
-        if tool_choice is not None:
-            kwargs["tool_choice"] = tool_choice
-        return self.bind(tools=tools, **kwargs)
+    def bind_tools(self, tools: Any, **kwargs: Any) -> "ScriptedChatModel":
+        return self
 
     def _generate(
         self,
@@ -62,11 +52,15 @@ class ScriptedChatModel(BaseChatModel):
                     {
                         "name": step.name,
                         "args": step.args,
-                        "id": f"call_{self._index}",
+                        "id": f"call-{self._index}",
                         "type": "tool_call",
                     }
                 ],
             )
+        elif step == "__echo_tool__":
+            tool_messages = [item for item in messages if isinstance(item, ToolMessage)]
+            text = str(tool_messages[-1].content) if tool_messages else ""
+            message = AIMessage(content=text)
         elif isinstance(step, str):
             message = AIMessage(content=step)
         elif isinstance(step, AIMessage):
