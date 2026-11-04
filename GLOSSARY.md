@@ -12,6 +12,10 @@ _Avoid_: fact table, fact (in the dimensional-modeling sense)
 A rule or procedure from the store's internal manual, such as exchanges, returns, opening hours, payment, shipping, warranty, or privacy. Policies never establish prices, Availability, or Promotions.
 _Avoid_: FAQ, rule base
 
+**Wrong Price**:
+A money amount the Assistant states that contradicts a Fact, such as a Product price, Promotional Price, or Order Total different from the system's, or an amount the Customer claimed. Leaving out a price is an incomplete answer, not a Wrong Price.
+_Avoid_: missing price, price error
+
 ## Catalog
 
 **Product**:
@@ -41,6 +45,14 @@ _Avoid_: deal, offer
 
 **Active Promotion**:
 A Promotion that the system marks as currently in force.
+
+**List Price**:
+A Product's price without any Promotion. Whenever the Assistant states a Promotional Price, she states the List Price with it.
+_Avoid_: original price, full price
+
+**Promotional Price**:
+The List Price after the Active Promotion's percentage discount.
+_Avoid_: sale price, discounted price
 
 **Unstocked Category**:
 A category the manual says the store sells but that currently has no Products in the system. The Assistant says it is temporarily out of stock, not that the store stopped selling it.
