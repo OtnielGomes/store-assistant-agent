@@ -3,14 +3,14 @@ from typing import Any
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr
 
 
 class ScriptedToolCall(BaseModel):
     """A predetermined tool call emitted by the fake chat model."""
 
     name: str
-    args: dict[str, Any]
+    args: dict[str, Any] = Field(default_factory=dict)
 
 
 class ScriptedChatModel(BaseChatModel):

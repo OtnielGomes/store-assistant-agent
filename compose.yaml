@@ -17,6 +17,20 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  ingest:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lia}:${POSTGRES_PASSWORD:-lia}@db:5432/${POSTGRES_DB:-lia}
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data:ro
+    command: ["python", "-m", "lia_api.ingest"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: ./api
@@ -29,6 +43,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      ingest:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [

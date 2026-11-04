@@ -109,7 +109,12 @@ def create_app(
         with PostgresSaver.from_conn_string(settings.database_url) as checkpointer:
             checkpointer.setup()
             handoff_tool = build_record_handoff_tool(store, app_clock)
-            app.state.graph = build_graph(chat_model, checkpointer, [handoff_tool])
+            app.state.graph = build_graph(
+                chat_model,
+                checkpointer,
+                [handoff_tool],
+                database_url=settings.database_url,
+            )
             yield
 
     app = FastAPI(title="Lia", lifespan=lifespan)
