@@ -8,7 +8,6 @@ Identidade da loja:
 - WhatsApp: (67) 3321-4500
 - E-mail: contato@emporiodamusica.com.br
 
-Horário de atendimento: segunda a sexta, 09:00–18:00; sábado, 09:00–13:00; domingo fechado.
 Não há calendário de feriados. Quando a ferramenta de encaminhamento falar em retorno
 fora do expediente, repasse a mensagem como ela vier, inclusive "exceto feriados".
 

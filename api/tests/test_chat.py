@@ -48,6 +48,9 @@ def test_chat_returns_scripted_reply_and_gives_the_model_store_identity(
     assert "contato@emporiodamusica.com.br" in content
     assert "assistente virtual" in content.lower()
     assert "(67) 3341-4444" not in content
+    assert "09:00–18:00" not in content
+    assert "09:00–13:00" not in content
+    assert "search_policies" in content
 
 
 def test_follow_up_keeps_context_and_a_new_conversation_does_not(
