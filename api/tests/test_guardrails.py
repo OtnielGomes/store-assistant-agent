@@ -303,6 +303,49 @@ def test_ungrounded_date_is_replaced_by_one_grounded_retry(
     assert len(model.calls) == 3
 
 
+def test_price_from_an_earlier_turn_does_not_ground_a_new_price(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_catalog(monkeypatch)
+    grounded = "O Shelby SU-21S custa R$ 159,90."
+    repeated = "Continua R$ 159,90."
+    model = ScriptedChatModel(
+        responses=[
+            ScriptedToolCall(name="calculate_price", args={"name": "Shelby SU-21S"}),
+            grounded,
+            repeated,
+            repeated,
+        ]
+    )
+
+    from lia_api.main import create_app
+
+    conversation_id = f"guard-prior-turn-price-{uuid4()}"
+    with TestClient(create_app(model=model)) as client:
+        first = client.post(
+            "/chat",
+            json={
+                "conversation_id": conversation_id,
+                "message": "Quanto custa o Shelby SU-21S?",
+            },
+        )
+        second = client.post(
+            "/chat",
+            json={
+                "conversation_id": conversation_id,
+                "message": "Confirma o preço?",
+            },
+        )
+
+    assert first.status_code == 200
+    assert first.json()["reply"] == grounded
+    assert first.json()["handoff"] is None
+    assert second.status_code == 200
+    assert second.json()["reply"] == SAFE_REPLY
+    assert "159,90" not in second.json()["reply"]
+    assert second.json()["handoff"]["reason"] == "output_check_failure"
+
+
 def test_two_ungrounded_replies_become_a_safe_message_and_a_handoff(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

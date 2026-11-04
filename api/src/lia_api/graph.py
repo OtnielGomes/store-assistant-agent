@@ -117,13 +117,15 @@ def _candidate_reply(messages: list[BaseMessage]) -> AIMessage | None:
 
 
 def _tool_evidence(messages: list[BaseMessage]) -> str:
-    """Tool text already returned in this conversation.
+    """Tool text returned after the latest customer message.
 
-    A follow-up can repeat an order total or a date from an earlier lookup
-    without calling that tool again. Invented values still fail.
+    A price or date from an earlier turn does not ground a later reply.
+    The model has to call the tool again in this turn.
     """
     parts = [
-        _message_text(message) for message in messages if message.type == "tool"
+        _message_text(message)
+        for message in messages[_turn_start(messages) :]
+        if message.type == "tool"
     ]
     return "\n".join(parts)
 
