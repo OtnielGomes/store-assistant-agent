@@ -162,8 +162,11 @@ def build_record_handoff_tool(
         """Registra um encaminhamento para um atendente e devolve a mensagem de retorno.
 
         Use quando o cliente pedir uma pessoa, reclamar, pedir exclusão de dados
-        pessoais ou perguntar algo que o manual não responde. Não grave telefone
-        nem e-mail. Repasse ao cliente, sem alterar, o texto devolvido aqui.
+        pessoais, perguntar algo que o manual não responde, pedir para executar
+        troca, devolução, reembolso ou garantia, questionar o valor do pedido,
+        ou quando a consulta mostrar entrega atrasada ou item em breve num
+        pedido aberto. Não grave telefone nem e-mail. Repasse ao cliente, sem
+        alterar, o texto devolvido aqui.
 
         reason: customer_request, complaint, data_deletion_request, policy_gap,
         exchange_return_refund_warranty, value_question, overdue_delivery,
