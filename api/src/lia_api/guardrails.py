@@ -42,6 +42,7 @@ _REPLY_MONEY = re.compile(
 _EVIDENCE_MONEY = re.compile(r"\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2}|\d+\.\d{2}")
 _ISO_DATE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 _SLASH_DATE = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{2,4})\b")
+_DAY_MONTH = re.compile(r"(?<!\d)(\d{1,2})/(\d{1,2})(?!\d)")
 _LONG_DATE = re.compile(
     r"\b(\d{1,2}) de (janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|"
     r"setembro|outubro|novembro|dezembro) de (\d{4})\b",
@@ -135,11 +136,16 @@ def reply_is_grounded(reply: str, evidence: str) -> bool:
     dates = _dates(reply, strict=True)
     if amounts is None or dates is None:
         return False
-    if not amounts and not dates:
+    reply_days = _month_days(reply)
+    if not amounts and not dates and not reply_days:
         return True
     known_amounts = _evidence_amounts(evidence)
     known_dates = _dates(evidence, strict=False) or set()
-    return amounts <= known_amounts and dates <= known_dates
+    return (
+        amounts <= known_amounts
+        and dates <= known_dates
+        and reply_days <= _month_days(evidence)
+    )
 
 
 def _reply_amounts(reply: str) -> set[Decimal] | None:
@@ -211,3 +217,16 @@ def _safe_date(year: int, month: int, day: int) -> date | None:
         return date(year, month, day)
     except ValueError:
         return None
+
+
+def _month_days(text: str) -> set[tuple[int, int]]:
+    """Day/month pairs, including those inside full dates already in the text."""
+    found: set[tuple[int, int]] = set()
+    for match in _DAY_MONTH.finditer(text):
+        day = int(match.group(1))
+        month = int(match.group(2))
+        if 1 <= month <= 12 and 1 <= day <= 31:
+            found.add((month, day))
+    dated = _dates(text, strict=False) or set()
+    found.update((item.month, item.day) for item in dated)
+    return found

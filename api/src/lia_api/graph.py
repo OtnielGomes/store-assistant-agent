@@ -25,8 +25,10 @@ from lia_api.guardrails import (
     reply_is_grounded,
 )
 from lia_api.handoff import HandoffStore, record_handoff
+from lia_api.orders import build_order_lookup_tool
 from lia_api.policies import Embedder, build_policy_search_tool
 from lia_api.prompt import STORE_SYSTEM_PROMPT
+from lia_api.returns import build_return_window_tool
 
 
 class LiaState(MessagesState):
@@ -115,10 +117,13 @@ def _candidate_reply(messages: list[BaseMessage]) -> AIMessage | None:
 
 
 def _tool_evidence(messages: list[BaseMessage]) -> str:
+    """Tool text already returned in this conversation.
+
+    A follow-up can repeat an order total or a date from an earlier lookup
+    without calling that tool again. Invented values still fail.
+    """
     parts = [
-        _message_text(message)
-        for message in messages[_turn_start(messages) :]
-        if message.type == "tool"
+        _message_text(message) for message in messages if message.type == "tool"
     ]
     return "\n".join(parts)
 
@@ -175,6 +180,8 @@ def build_graph(
     selected = list(tools or [])
     if database_url:
         selected.append(build_catalog_search_tool(database_url))
+        selected.append(build_order_lookup_tool(database_url))
+        selected.append(build_return_window_tool(database_url))
         selected.append(build_calculator_tool(database_url))
         if embedder is not None:
             selected.append(build_policy_search_tool(database_url, embedder))
