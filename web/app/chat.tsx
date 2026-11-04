@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 type Role = "customer" | "assistant";
@@ -30,12 +31,17 @@ const typingIndicator = (
   </div>
 );
 
-export function Chat() {
+function simulatedInstant(value: string): string {
+  return value.length === 16 ? `${value}:00` : value;
+}
+
+export function Chat({ developmentMode }: { developmentMode: boolean }) {
   const [conversationId, setConversationId] = useState(() => crypto.randomUUID());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [isWaiting, setIsWaiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [simulatedAt, setSimulatedAt] = useState("");
   const threadRef = useRef<HTMLDivElement>(null);
   const conversationRef = useRef(conversationId);
 
@@ -80,6 +86,9 @@ export function Chat() {
         body: JSON.stringify({
           conversation_id: activeConversation,
           message: text,
+          ...(developmentMode && simulatedAt
+            ? { simulated_at: simulatedInstant(simulatedAt) }
+            : {}),
         }),
       });
       if (!response.ok) {
@@ -114,10 +123,26 @@ export function Chat() {
             Lia, assistente virtual
           </p>
         </div>
-        <button type="button" className="new-chat" onClick={startNewConversation}>
-          Nova conversa
-        </button>
+        <div className="header-actions">
+          <Link className="sheet-link" href="/fila">
+            Fila de atendimento
+          </Link>
+          <button type="button" className="new-chat" onClick={startNewConversation}>
+            Nova conversa
+          </button>
+        </div>
       </header>
+      {developmentMode ? (
+        <label className="dev-clock">
+          <span>Horário simulado</span>
+          <input
+            type="datetime-local"
+            value={simulatedAt}
+            onChange={(event) => setSimulatedAt(event.target.value)}
+          />
+          <span className="dev-clock-note">A próxima mensagem usa este horário.</span>
+        </label>
+      ) : null}
       <div className="thread" ref={threadRef} aria-live="polite">
         {messages.length === 0 ? (
           <p className="empty-thread">Escreva uma mensagem para a Lia.</p>
