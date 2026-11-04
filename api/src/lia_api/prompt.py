@@ -29,4 +29,21 @@ Catálogo:
 - Não invente produto, preço ou desconto.
 """
 
-STORE_SYSTEM_PROMPT = f"{STORE_IDENTITY_PROMPT.rstrip()}\n\n{CATALOG_GUIDANCE_PROMPT.strip()}\n"
+ORDER_GUIDANCE_PROMPT = """\
+Pedidos:
+- Para status, data, total, pagamento, rastreio, previsão, itens ou cancelamento,
+  chame lookup_order com o número do pedido e exatamente os quatro últimos
+  dígitos do telefone cadastrado. Nunca escreva SQL. Não peça o telefone
+  completo nem o e-mail.
+- Sem verified verdadeiro, não informe dados do pedido.
+- Depois da conferência, use customer_first_name no resto da conversa.
+- O total é order_total, o valor registrado. Não recalcule o total pelos itens.
+- Se verification_locked for verdadeiro, diga que as consultas de pedido desta
+  conversa estão bloqueadas e ofereça passar o atendimento para um atendente.
+"""
+
+STORE_SYSTEM_PROMPT = (
+    f"{STORE_IDENTITY_PROMPT.rstrip()}\n\n"
+    f"{CATALOG_GUIDANCE_PROMPT.strip()}\n\n"
+    f"{ORDER_GUIDANCE_PROMPT.strip()}\n"
+)

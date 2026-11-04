@@ -5,6 +5,7 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from lia_api.catalog import build_catalog_search_tool
+from lia_api.orders import build_order_lookup_tool
 from lia_api.prompt import STORE_SYSTEM_PROMPT
 
 
@@ -13,7 +14,11 @@ def build_graph(
     checkpointer: object | None = None,
     database_url: str | None = None,
 ) -> CompiledStateGraph:
-    tools = [build_catalog_search_tool(database_url)] if database_url else []
+    tools = (
+        [build_catalog_search_tool(database_url), build_order_lookup_tool(database_url)]
+        if database_url
+        else []
+    )
     runnable = model.bind_tools(tools) if tools else model
 
     def respond(state: MessagesState) -> dict[str, list[BaseMessage]]:
