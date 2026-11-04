@@ -6,7 +6,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from lia_api.ingest import load_store
-from tests.order_examples import ORDERS, assert_no_customer_contact, verified_payload
+from tests.order_examples import (
+    ORDERS,
+    STORE_CLOCK,
+    assert_no_customer_contact,
+    verified_payload,
+)
 from tests.scripted_model import ScriptedChatModel, ScriptedToolCall
 
 LOCKED = {"verified": False, "verification_locked": True, "order": None}
@@ -29,7 +34,7 @@ def _client(monkeypatch: pytest.MonkeyPatch, responses: list[str | ScriptedToolC
     model = ScriptedChatModel(responses=responses)
     from lia_api.main import create_app
 
-    return model, TestClient(create_app(model=model))
+    return model, TestClient(create_app(model=model, clock=STORE_CLOCK))
 
 
 def test_chat_verifies_every_order_and_replies_with_the_first_name(
@@ -130,11 +135,7 @@ def test_chat_keeps_the_verified_first_name_for_the_rest_of_the_conversation(
 
 def test_chat_offers_a_handoff_when_verification_locks(monkeypatch: pytest.MonkeyPatch) -> None:
     example = ORDERS[7]
-    blocked = (
-        "As consultas de pedido desta conversa estão bloqueadas. "
-        "Posso te passar para um atendente."
-    )
-    still_blocked = "Continua bloqueado. Posso te passar para um atendente humano."
+    during_hours = "A equipe continua o atendimento em instantes."
     model, client = _client(
         monkeypatch,
         [
@@ -152,12 +153,20 @@ def test_chat_offers_a_handoff_when_verification_locks(monkeypatch: pytest.Monke
                 name="lookup_order",
                 args={"order_number": 8, "phone_last_four": "2222"},
             ),
-            blocked,
+            ScriptedToolCall(
+                name="record_handoff",
+                args={
+                    "reason": "verification_locked",
+                    "summary": "O cliente não conseguiu confirmar o pedido 8.",
+                    "order_id": 8,
+                },
+            ),
+            during_hours,
             ScriptedToolCall(
                 name="lookup_order",
                 args={"order_number": 8, "phone_last_four": "7821"},
             ),
-            still_blocked,
+            during_hours,
         ],
     )
     conversation_id = f"chat-lock-{uuid4()}"
@@ -175,14 +184,24 @@ def test_chat_offers_a_handoff_when_verification_locks(monkeypatch: pytest.Monke
             )
             for message in messages
         ]
+        listed = client.get("/handoffs").json()
 
-    assert responses[2].json()["reply"] == blocked
-    assert responses[3].json()["reply"] == still_blocked
-    assert all(response.json()["handoff"] is None for response in responses)
-    assert "atendente" in responses[2].json()["reply"]
-    assert "atendente" in responses[3].json()["reply"]
+    assert responses[0].json()["handoff"] is None
+    assert responses[1].json()["handoff"] is None
+    locked_body = responses[2].json()
+    assert locked_body["reply"] == during_hours
+    assert locked_body["handoff"]["reason"] == "verification_locked"
+    assert isinstance(locked_body["handoff"]["id"], int)
+    assert responses[3].json()["reply"] == during_hours
+    assert responses[3].json()["handoff"] is None
+    assert_no_customer_contact(locked_body["reply"], example)
+    recorded = next(item for item in listed if item["id"] == locked_body["handoff"]["id"])
+    assert recorded["reason"] == "verification_locked"
+    assert recorded["order_id"] == 8
+    assert recorded["summary"] == "O cliente não conseguiu confirmar o pedido 8."
+    assert_no_customer_contact(json.dumps(recorded, ensure_ascii=False), example)
 
-    locked_payloads = []
+    lookup_payloads = []
     for call in model.calls:
         for message in call:
             if message.type != "tool":
@@ -190,8 +209,11 @@ def test_chat_offers_a_handoff_when_verification_locks(monkeypatch: pytest.Monke
             content = message.content
             assert isinstance(content, str)
             assert_no_customer_contact(content, example)
-            locked_payloads.append(json.loads(content))
-    assert locked_payloads[-2] == LOCKED
-    assert locked_payloads[-1] == LOCKED
-    assert "Ana" not in json.dumps(locked_payloads[-1])
-    assert "349.90" not in json.dumps(locked_payloads[-1])
+            if message.name == "record_handoff":
+                assert content == during_hours
+            if message.name == "lookup_order":
+                lookup_payloads.append(json.loads(content))
+    assert lookup_payloads[-2] == LOCKED
+    assert lookup_payloads[-1] == LOCKED
+    assert "Ana" not in json.dumps(lookup_payloads[-1])
+    assert "349.90" not in json.dumps(lookup_payloads[-1])

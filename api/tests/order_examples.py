@@ -1,5 +1,12 @@
 """Literal order facts from the shifted CSVs. Totals are not recomputed here."""
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from lia_api.clock import FrozenClock
+
+STORE_CLOCK = FrozenClock(datetime(2026, 11, 3, 10, 0, tzinfo=ZoneInfo("America/Campo_Grande")))
+
 ORDERS: list[dict[str, object]] = [
     {
         "order_number": 1,

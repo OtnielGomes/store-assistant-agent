@@ -1,7 +1,7 @@
 """Order lookup. The model chooses arguments; it never writes SQL."""
 
 import json
-from datetime import date
+from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
@@ -10,9 +10,8 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import InjectedToolArg, tool
 from psycopg.rows import dict_row
 
-# Ticket #5's injectable clock is not on this branch. Anomaly flags use the
-# frozen store date from the spec: 2026-11-03 in America/Campo_Grande.
-LOOKUP_TODAY = date(2026, 11, 3)
+from lia_api.clock import SystemClock
+
 _LOCK_AFTER_FAILURES = 3
 _OPEN_STATUSES = ("pending", "confirmed", "shipped")
 _PIX_FACTOR = Decimal("0.95")
@@ -85,6 +84,7 @@ def build_order_lookup_tool(database_url: str):
             order_number=order_number,
             phone_last_four=phone_last_four,
             conversation_id=_conversation_id(config),
+            today=_today(config),
         )
         return json.dumps(result, ensure_ascii=False)
 
@@ -97,7 +97,7 @@ def execute_order_lookup(
     order_number: int,
     phone_last_four: str,
     conversation_id: str,
-    today: date = LOOKUP_TODAY,
+    today: date,
 ) -> dict[str, object]:
     if not conversation_id.strip():
         raise ValueError("A conversation id is required to look up an order.")
@@ -121,6 +121,17 @@ def execute_order_lookup(
         items = connection.execute(_ITEMS_SQL, {"order_id": order_number}).fetchall()
         connection.commit()
     return _present(row, items, today)
+
+
+def _today(config: RunnableConfig) -> date:
+    configurable = config.get("configurable")
+    clock = configurable.get("clock") if isinstance(configurable, dict) else None
+    if clock is None or not hasattr(clock, "now"):
+        clock = SystemClock()
+    moment = clock.now()
+    if not isinstance(moment, datetime):
+        raise ValueError("The store clock must return a datetime.")
+    return moment.date()
 
 
 def _conversation_id(config: RunnableConfig) -> str:

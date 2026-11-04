@@ -5,7 +5,12 @@ from uuid import uuid4
 import pytest
 
 from lia_api.ingest import load_store
-from tests.order_examples import ORDERS, assert_no_customer_contact, verified_payload
+from tests.order_examples import (
+    ORDERS,
+    STORE_CLOCK,
+    assert_no_customer_contact,
+    verified_payload,
+)
 
 NOT_VERIFIED = {"verified": False, "verification_locked": False, "order": None}
 LOCKED = {"verified": False, "verification_locked": True, "order": None}
@@ -26,7 +31,7 @@ def _lookup(order_number: int, phone_last_four: str, conversation_id: str) -> tu
     tool = build_order_lookup_tool(database_url)
     payload = tool.invoke(
         {"order_number": order_number, "phone_last_four": phone_last_four},
-        config={"configurable": {"thread_id": conversation_id}},
+        config={"configurable": {"thread_id": conversation_id, "clock": STORE_CLOCK}},
     )
     assert isinstance(payload, str)
     return json.loads(payload), payload
