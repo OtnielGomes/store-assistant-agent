@@ -1,21 +1,21 @@
 # store-assistant-agent
 
-Customer-facing virtual assistant for Empório da Música, a musical instrument store in Campo Grande (MS). Domain vocabulary lives in [GLOSSARY.md](./GLOSSARY.md) and architectural decisions in [docs/adr/](./docs/adr/).
+Assistente virtual de atendimento do Empório da Música, loja de instrumentos musicais em Campo Grande (MS). O vocabulário do domínio está em [GLOSSARY.md](./GLOSSARY.md) e as decisões de arquitetura em [docs/adr/](./docs/adr/).
 
-## Setup
+## Como subir
 
-Copy the sample environment and start PostgreSQL, the API, and the web app:
+Copie o ambiente de exemplo e suba o PostgreSQL, a API e a aplicação web:
 
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
-Open http://127.0.0.1:3000 and talk to Lia. The API listens on http://127.0.0.1:8000 (`GET /health`, `POST /chat`).
+Abra http://127.0.0.1:3000 e converse com a Lia. A API escuta em http://127.0.0.1:8000 (`GET /health`, `POST /chat`).
 
-`.env.example` lists every setting. Model defaults are `gpt-6-luna`, reasoning effort `none`, temperature `0`, and embeddings `text-embedding-3-small`. Startup fails when `OPENAI_TEMPERATURE` is set and `OPENAI_REASONING_EFFORT` is not `none`. Put a real `OPENAI_API_KEY` in `.env` before expecting a live reply. LangSmith tracing follows `LANGSMITH_TRACING`, `LANGSMITH_API_KEY`, and `LANGSMITH_PROJECT`.
+O `.env.example` lista todas as configurações. Os padrões do modelo são `gpt-6-luna`, esforço de raciocínio `none`, temperatura `0` e embeddings `text-embedding-3-small`. A inicialização falha quando `OPENAI_TEMPERATURE` está definida e `OPENAI_REASONING_EFFORT` não é `none`. Coloque uma `OPENAI_API_KEY` real no `.env` antes de esperar uma resposta ao vivo. O rastreamento no LangSmith segue `LANGSMITH_TRACING`, `LANGSMITH_API_KEY` e `LANGSMITH_PROJECT`.
 
-Compose publishes Postgres on `127.0.0.1:54330` and overrides `DATABASE_URL` inside the API container so it uses the `db` service. Host-side API tests use the published database and a scripted chat model, so they do not call OpenAI:
+O Compose publica o Postgres em `127.0.0.1:54330` e substitui `DATABASE_URL` dentro do container da API para usar o serviço `db`. Os testes da API no host usam esse banco publicado e um modelo de chat roteirizado, então não chamam a OpenAI:
 
 ```bash
 cd api
@@ -24,7 +24,7 @@ DATABASE_URL=postgresql://lia:lia@127.0.0.1:54330/lia uv run ruff check src test
 DATABASE_URL=postgresql://lia:lia@127.0.0.1:54330/lia uv run pytest
 ```
 
-The web app, from `web/`:
+A aplicação web, a partir de `web/`:
 
 ```bash
 pnpm install
@@ -33,52 +33,66 @@ pnpm build
 pnpm typecheck
 ```
 
-## Data
+## Pedidos para consultar o status
 
-`data/` holds the material provided by the store:
+A Lia só informa o pedido com o número e os quatro últimos dígitos do telefone cadastrado. Estes cinco cobrem os cinco status.
 
-- Six CSVs (`products`, `categories`, `orders`, `order_items`, `customers`, `promotions`): the Facts, loaded into PostgreSQL.
-- `políticas_da_loja.pdf`: the internal policy manual (version 2.1, June 2025): the Policies.
+| Pedido | Status | Cliente | Últimos 4 dígitos |
+|---|---|---|---|
+| 1 | Entregue | Pedro Henrique Oliveira | 1098 |
+| 8 | Enviado | Ana Carolina Ferreira | 7821 |
+| 9 | Confirmado | Juliana Almeida Rodrigues | 5678 |
+| 13 | Pendente | Fernanda Ribeiro Souza | 7890 |
+| 17 | Cancelado | Matheus Ramos Correia | 8765 |
 
-The raw files are never edited. Every adjustment below happens when the data is loaded.
+Exemplo: "Qual o status do pedido 8? Os quatro últimos dígitos são 7821."
 
-### Date shift (+224 days)
+## Dados
 
-The CSVs are a snapshot taken on Monday 2026-03-23 (orders placed from 2025-10-15 to 2026-03-22). The loader adds 224 days (exactly 32 weeks, so weekdays are preserved) to every date column: `orders.order_date`, `orders.estimated_delivery`, and `products.created_at`. After the shift the snapshot is Monday 2026-11-02 and the orders span 2026-05-27 to 2026-11-01. See [ADR-0003](./docs/adr/0003-shift-csv-dates-to-present.md).
+`data/` guarda o material fornecido pela loja:
 
-### Known data anomalies
+- Seis CSVs (`products`, `categories`, `orders`, `order_items`, `customers`, `promotions`): os fatos, carregados no PostgreSQL.
+- `políticas_da_loja.pdf`: o manual interno de políticas (versão 2.1, junho de 2025): as políticas.
 
-These inconsistencies are kept on purpose. They reproduce situations a real store faces, and the Assistant never corrects or explains them on its own: an Attendant resolves them through a Handoff. Dates below are already shifted.
+Os arquivos originais nunca são editados. Todo ajuste abaixo acontece na carga dos dados.
 
-| # | Anomaly | Records |
+### Deslocamento das datas (+224 dias)
+
+Os CSVs são um retrato tirado na segunda-feira 2026-03-23 (pedidos feitos de 2025-10-15 a 2026-03-22). A carga soma 224 dias (exatamente 32 semanas, então os dias da semana se preservam) a toda coluna de data: `orders.order_date`, `orders.estimated_delivery` e `products.created_at`. Depois do deslocamento, o retrato é a segunda-feira 2026-11-02 e os pedidos vão de 2026-05-27 a 2026-11-01. Veja o [ADR-0003](./docs/adr/0003-shift-csv-dates-to-present.md).
+
+### Anomalias conhecidas
+
+Estas inconsistências são mantidas de propósito. Elas reproduzem situações que uma loja real enfrenta, e a assistente nunca as corrige nem as explica por conta própria: um atendente as resolve por um encaminhamento. As datas abaixo já estão deslocadas.
+
+| # | Anomalia | Registros |
 |---|---|---|
-| 1 | Coming-soon Product present in orders | Product 130 in order 3 (delivered) and order 14 (pending) |
-| 2 | Discontinued Product with units in stock | Product 136 (13 units) |
-| 3 | Shipped order past its estimated delivery | Order 8 (shipped 2026-09-27, estimated 2026-10-10) |
-| 4 | Campo Grande orders estimated at 10–15 days, while the manual promises 1–3 business days in the metropolitan area | Orders 1, 2, 3, 4, 5, 7, 8 |
-| 5 | Categories the manual says the store sells but that have no Products | Categories 6, 7, 8 (wind and orchestral strings), treated as Unstocked Categories |
-| 6 | Black Friday promotion below the manual's 15–30% range (inactive) | Promotion 1 (10%) |
-| 7 | Same Product with more than one promotion (all inactive) | Products 93, 96, 99 |
-| 8 | Manual lists two phone numbers and a misspelled e-mail | Section 1.2 lists (67) 3341-4444 as "Telefone / WhatsApp" and `contato@empóriodamusica.com.br`; section 7 names (67) 3321-4500 as the WhatsApp channel |
+| 1 | Produto em breve presente em pedidos | Produto 130 no pedido 3 (entregue) e no pedido 14 (pendente) |
+| 2 | Produto descontinuado com unidades em estoque | Produto 136 (13 unidades) |
+| 3 | Pedido enviado com a previsão de entrega já passada | Pedido 8 (enviado em 2026-09-27, previsão 2026-10-10) |
+| 4 | Pedidos de Campo Grande com previsão de 10 a 15 dias, enquanto o manual promete 1 a 3 dias úteis na região metropolitana | Pedidos 1, 2, 3, 4, 5, 7, 8 |
+| 5 | Categorias que o manual diz que a loja vende, mas que não têm produtos | Categorias 6, 7 e 8 (sopros e cordas orquestrais), tratadas como categorias temporariamente sem produtos |
+| 6 | Promoção de Black Friday abaixo da faixa de 15–30% do manual (inativa) | Promoção 1 (10%) |
+| 7 | Mesmo produto com mais de uma promoção (todas inativas) | Produtos 93, 96 e 99 |
+| 8 | O manual lista dois telefones e um e-mail com erro de grafia | A seção 1.2 lista (67) 3341-4444 como "Telefone / WhatsApp" e `contato@empóriodamusica.com.br`; a seção 7 indica (67) 3321-4500 como o canal de WhatsApp |
 
-Product 96 (active, zero stock) is not an anomaly: it is the catalog's legitimate temporarily unavailable Product.
+O produto 96 (ativo, estoque zero) não é uma anomalia: é o produto legitimamente indisponível no momento.
 
-An Order Total is the amount recorded on the Order. The Assistant reports that amount and does not compare it with item prices or with the PIX discount.
+O total do pedido é o valor registrado nele. A assistente informa esse valor e não o compara com os preços dos itens nem com o desconto do PIX.
 
-For anomaly 8, the Assistant gives customers only the WhatsApp channel (67) 3321-4500 and the e-mail `contato@emporiodamusica.com.br`.
+Na anomalia 8, a assistente informa ao cliente apenas o WhatsApp (67) 3321-4500 e o e-mail `contato@emporiodamusica.com.br`.
 
-## Golden set evals
+## Avaliações do conjunto de ouro
 
-`evals/golden/v1.jsonl` is the source of truth: 41 customer conversations (11 catalog/price/Availability, 5 Promotions, 8 Orders, 8 Policies, 5 Handoffs, 4 out of scope). Each line records the customer message or messages, the frozen instant (default Tuesday 2026-11-03 10:00 in America/Campo_Grande; the after-hours case sets its own), and the expected outcomes: tool, required reply values, whether a Handoff must be created, and that the reply must not contain a phone or e-mail.
+`evals/golden/v1.jsonl` é a fonte da verdade: 41 conversas de clientes (11 de catálogo/preço/disponibilidade, 5 de promoções, 8 de pedidos, 8 de políticas, 5 de encaminhamentos, 4 fora de escopo). Cada linha registra a mensagem ou as mensagens do cliente, o instante congelado (padrão: terça-feira 2026-11-03 10:00 em America/Campo_Grande; o caso fora do expediente define o seu) e os resultados esperados: ferramenta, valores obrigatórios na resposta, se um encaminhamento deve ser criado, e que a resposta não pode conter telefone nem e-mail.
 
-The live run uploads that file to the LangSmith dataset `lia-golden-v1` (replacing remote examples), calls OpenAI once per case, and records one experiment. Deterministic checks cover the tool, the required values, the Handoff, contact details, and plain text (no markdown, and no mention of a section or the manual). An LLM judge scores correctness and tone in Portuguese. The command prints passed cases, the three hard gates, and the experiment URL.
+A execução ao vivo envia esse arquivo para o conjunto de dados `lia-golden-v1` no LangSmith (substituindo os exemplos remotos), chama a OpenAI uma vez por caso e registra um experimento. As verificações determinísticas cobrem a ferramenta, os valores obrigatórios, o encaminhamento, os dados de contato e o texto simples (sem markdown e sem menção a seção ou ao manual). Um juiz de LLM avalia correção e tom em português. O comando imprime os casos aprovados, as três travas rígidas e a URL do experimento.
 
-The verdict passes only when at least 37 of 41 cases pass and there are zero wrong prices, zero personal-data leaks, and zero missed mandatory Handoffs. Otherwise the command exits non-zero. A wrong price is a forbidden amount from the case (for example a recomputed Order Total or a Coming-soon catalog price) or some other money amount stated in place of a required price. A phone or e-mail anywhere in the reply, including the store's own contact, is a personal-data leak. `ci.yml` does not call OpenAI. `.github/workflows/evals.yml` runs this command on manual dispatch with the `OPENAI_API_KEY` and `LANGSMITH_API_KEY` repository secrets.
+O veredito só passa quando pelo menos 37 dos 41 casos passam e não há preço errado, vazamento de dado pessoal nem encaminhamento obrigatório perdido. Caso contrário, o comando termina com código diferente de zero. Preço errado é um valor proibido pelo caso (por exemplo, um total de pedido recalculado ou o preço de catálogo de um produto em breve) ou algum outro valor em dinheiro dito no lugar de um preço obrigatório. Telefone ou e-mail em qualquer ponto da resposta, inclusive o contato da própria loja, é vazamento de dado pessoal. O `ci.yml` não chama a OpenAI. O `.github/workflows/evals.yml` roda este comando sob disparo manual, com os segredos `OPENAI_API_KEY` e `LANGSMITH_API_KEY` do repositório.
 
-From `api/`, with Postgres reachable at `DATABASE_URL` and real keys in the environment:
+A partir de `api/`, com o Postgres acessível em `DATABASE_URL` e as chaves reais no ambiente:
 
 ```bash
 uv run python -m lia_api.evals
 ```
 
-`uv run pytest tests/test_golden_set.py` checks the file, the deterministic evaluators, and the verdict math without calling OpenAI or LangSmith.
+`uv run pytest tests/test_golden_set.py` confere o arquivo, os avaliadores determinísticos e a conta do veredito sem chamar a OpenAI nem o LangSmith.
