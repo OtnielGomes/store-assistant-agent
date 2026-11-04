@@ -15,13 +15,13 @@ Open http://127.0.0.1:3000 and talk to Lia. The API listens on http://127.0.0.1:
 
 `.env.example` lists every setting. Model defaults are `gpt-6-luna`, reasoning effort `none`, temperature `0`, and embeddings `text-embedding-3-small`. Startup fails when `OPENAI_TEMPERATURE` is set and `OPENAI_REASONING_EFFORT` is not `none`. Put a real `OPENAI_API_KEY` in `.env` before expecting a live reply. LangSmith tracing follows `LANGSMITH_TRACING`, `LANGSMITH_API_KEY`, and `LANGSMITH_PROJECT`.
 
-Compose publishes Postgres on `127.0.0.1:5432` and overrides `DATABASE_URL` inside the API container so it uses the `db` service. Host-side API tests use the published database and a scripted chat model, so they do not call OpenAI:
+Compose publishes Postgres on `127.0.0.1:54330` and overrides `DATABASE_URL` inside the API container so it uses the `db` service. Host-side API tests use the published database and a scripted chat model, so they do not call OpenAI:
 
 ```bash
 cd api
-DATABASE_URL=postgresql://lia:lia@127.0.0.1:5432/lia uv sync
-DATABASE_URL=postgresql://lia:lia@127.0.0.1:5432/lia uv run ruff check src tests
-DATABASE_URL=postgresql://lia:lia@127.0.0.1:5432/lia uv run pytest
+DATABASE_URL=postgresql://lia:lia@127.0.0.1:54330/lia uv sync
+DATABASE_URL=postgresql://lia:lia@127.0.0.1:54330/lia uv run ruff check src tests
+DATABASE_URL=postgresql://lia:lia@127.0.0.1:54330/lia uv run pytest
 ```
 
 The web app, from `web/`:

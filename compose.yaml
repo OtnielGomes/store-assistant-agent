@@ -8,7 +8,7 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:54330:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lia} -d ${POSTGRES_DB:-lia}"]
       interval: 5s
