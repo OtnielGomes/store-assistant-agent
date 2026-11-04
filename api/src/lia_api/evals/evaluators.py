@@ -81,6 +81,12 @@ def no_contact(run: object, example: object) -> dict[str, object]:
     return {"key": "no_contact", "score": score, "comment": result.contact_comment}
 
 
+def plain_text(run: object, example: object) -> dict[str, object]:
+    result = _checked(run, example)
+    score = 1 if result.plain_ok else 0
+    return {"key": "plain_text", "score": score, "comment": result.plain_comment}
+
+
 def wrong_price(run: object, example: object) -> dict[str, object]:
     result = _checked(run, example)
     score = 0 if result.wrong_price else 1
@@ -109,6 +115,7 @@ def make_evaluators(judge: Judge) -> list[object]:
         required_values,
         handoff,
         no_contact,
+        plain_text,
         wrong_price,
         make_portuguese_judge(judge),
     ]

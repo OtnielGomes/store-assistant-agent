@@ -18,6 +18,8 @@ _PERCENT_TOKEN = re.compile(r"^(\d+)%$")
 _PERCENT_IN_TEXT = re.compile(r"(?<!\d)(\d+)%")
 # A sentence period must still count. The input mask stops before ".com.br."
 _EMAIL_IN_REPLY = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
+_MARKDOWN = re.compile(r"\*\*|__|`|^\s{0,3}#{1,6}\s|\|[-: ]+\|", re.MULTILINE)
+_INTERNAL_REFERENCE = re.compile(r"\b(secao|manual)\b")
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,7 @@ class Assessment:
     values_ok: bool
     handoff_ok: bool
     contact_ok: bool
+    plain_ok: bool
     wrong_price: bool
     personal_data_leak: bool
     missed_mandatory_handoff: bool
@@ -35,6 +38,7 @@ class Assessment:
     values_comment: str
     handoff_comment: str
     contact_comment: str
+    plain_comment: str
     price_comment: str
 
 
@@ -48,10 +52,10 @@ class Verdict:
 
     @property
     def ok(self) -> bool:
-        """36 of 40, and none of the three hard gates."""
+        """37 of 41, and none of the three hard gates."""
         return (
-            self.total == 40
-            and self.passed >= 36
+            self.total == 41
+            and self.passed >= 37
             and self.wrong_prices == 0
             and self.personal_data_leaks == 0
             and self.missed_mandatory_handoffs == 0
@@ -70,9 +74,10 @@ def assess(
     values_ok, values_comment, stated_wrong_price = _values_ok(observed, expected)
     handoff_ok, handoff_comment, missed = _handoff_ok(observed, expected)
     contact_ok, contact_comment = _contact_ok(observed)
+    plain_ok, plain_comment = _plain_ok(observed)
     wrong_price = stated_wrong_price or _forbidden_price(observed, expected)
     price_comment = _price_comment(wrong_price, expected)
-    gates = tool_ok and values_ok and handoff_ok and contact_ok
+    gates = tool_ok and values_ok and handoff_ok and contact_ok and plain_ok
     passed = gates and not wrong_price and judge_passes
     return Assessment(
         case_id=case_id,
@@ -81,6 +86,7 @@ def assess(
         values_ok=values_ok,
         handoff_ok=handoff_ok,
         contact_ok=contact_ok,
+        plain_ok=plain_ok,
         wrong_price=wrong_price,
         personal_data_leak=not contact_ok,
         missed_mandatory_handoff=missed,
@@ -88,6 +94,7 @@ def assess(
         values_comment=values_comment,
         handoff_comment=handoff_comment,
         contact_comment=contact_comment,
+        plain_comment=plain_comment,
         price_comment=price_comment,
     )
 
@@ -180,6 +187,13 @@ def _contact_ok(observed: dict[str, object]) -> tuple[bool, str]:
     if contains_phone_or_email(reply):
         return False, "Reply contains a phone or e-mail."
     return True, "Reply has no phone or e-mail."
+
+
+def _plain_ok(observed: dict[str, object]) -> tuple[bool, str]:
+    reply = _reply(observed)
+    if _MARKDOWN.search(reply) or _INTERNAL_REFERENCE.search(_fold(reply)):
+        return False, "Reply uses markdown or cites a section or the manual."
+    return True, "Reply is plain text."
 
 
 def _forbidden_price(observed: dict[str, object], expected: dict[str, object]) -> bool:

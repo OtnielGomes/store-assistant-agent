@@ -23,6 +23,7 @@ from lia_api.guardrails import (
     exceeds_message_length,
     mask_personal_data,
     reply_is_grounded,
+    to_plain_text,
 )
 from lia_api.handoff import HandoffStore, record_handoff
 from lia_api.orders import build_order_lookup_tool
@@ -136,7 +137,11 @@ def _output_check_node(store: HandoffStore | None):
         if reply is None or reply.id is None:
             return {"regenerate": False}
         if reply_is_grounded(_message_text(reply), _tool_evidence(state["messages"])):
-            return {"regenerate": False, "output_failures": 0}
+            plain = to_plain_text(_message_text(reply))
+            cleaned: dict[str, object] = {"regenerate": False, "output_failures": 0}
+            if plain != _message_text(reply):
+                cleaned["messages"] = [AIMessage(content=plain, id=reply.id)]
+            return cleaned
         failures = int(state.get("output_failures") or 0)
         if failures < 1:
             return {

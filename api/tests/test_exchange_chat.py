@@ -87,13 +87,18 @@ def _window_lines(payload: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
+def _for_the_customer(policy: str) -> str:
+    lines = [line for line in policy.splitlines() if not line.startswith("Seção ")]
+    return "\n".join(lines).strip()
+
+
 def _claim_reply(messages: list[BaseMessage]) -> AIMessage:
     policy = _policy_sections(_tool_message(messages, "search_policies"), ("4", "8"))
     window = json.loads(_tool_message(messages, "check_return_window"))
     handoff = _tool_message(messages, "record_handoff")
     if not policy or not isinstance(window, dict) or "deadlines" not in window:
         return AIMessage(content="ferramentas de troca incompletas")
-    return AIMessage(content=f"{policy}\n{_window_lines(window)}\n{handoff}")
+    return AIMessage(content=f"{_for_the_customer(policy)}\n{_window_lines(window)}\n{handoff}")
 
 
 def _lookup_reply(example: dict[str, object]) -> str:
@@ -141,7 +146,7 @@ def _value_reply(messages: list[BaseMessage]) -> AIMessage:
         return AIMessage(content="regra de PIX ausente")
     return AIMessage(
         content=(
-            f"O total registrado é R$ {total}. {policy} "
+            f"O total registrado é R$ {total}. {_for_the_customer(policy)} "
             f"Não confirmo um erro e não prometo reembolso. {handoff}"
         )
     )
@@ -256,7 +261,8 @@ def test_executing_a_claim_explains_the_policy_reports_deadlines_and_hands_off(
     body = response.json()
     reply = body["reply"]
     assert body["handoff"]["reason"] == "exchange_return_refund_warranty"
-    assert section in reply
+    assert section not in reply
+    assert "Seção" not in reply
     assert DURING_HOURS in reply
     assert "aprovada" not in reply.lower()
     assert "negada" not in reply.lower()
@@ -293,7 +299,7 @@ def test_executing_a_claim_on_an_undelivered_order_hands_off_without_a_deadline(
         handoff = _tool_message(messages, "record_handoff")
         if window.get("deadlines") is not None or "Seção 4.1" not in policy:
             return AIMessage(content="Pelo sistema, o prazo de 7 dias terminou em 06/10.")
-        return AIMessage(content=f"{policy}\n{handoff}")
+        return AIMessage(content=f"{_for_the_customer(policy)}\n{handoff}")
 
     model, client = _client(
         monkeypatch,
@@ -328,7 +334,8 @@ def test_executing_a_claim_on_an_undelivered_order_hands_off_without_a_deadline(
 
     body = response.json()
     assert body["handoff"]["reason"] == "exchange_return_refund_warranty"
-    assert "Seção 4.1" in body["reply"]
+    assert "Seção" not in body["reply"]
+    assert "arrependimento" in body["reply"].lower()
     assert DURING_HOURS in body["reply"]
     assert "Pelo sistema, o prazo" not in body["reply"]
     assert "06/10" not in body["reply"]
@@ -352,7 +359,7 @@ def test_asking_how_exchanges_work_explains_the_policy_without_a_handoff(
         )
         if "Seção 4.1" not in policy or "Seção 4.3" not in policy:
             return AIMessage(content="política de troca ausente")
-        return AIMessage(content=policy)
+        return AIMessage(content=_for_the_customer(policy))
 
     model, client = _client(
         monkeypatch,
@@ -375,8 +382,7 @@ def test_asking_how_exchanges_work_explains_the_policy_without_a_handoff(
 
     body = response.json()
     assert body["handoff"] is None
-    assert "Seção 4.1" in body["reply"]
-    assert "Seção 4.3" in body["reply"]
+    assert "Seção" not in body["reply"]
     assert "30 (trinta) dias" in body["reply"]
     assert "record_handoff" not in [message.name for call in model.calls for message in call]
     prompt = _system_text(model.calls[0])

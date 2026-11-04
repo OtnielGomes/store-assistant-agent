@@ -45,6 +45,7 @@ def _passing_assessment(case_id: str, *, passed: bool = True, **overrides: objec
         "values_ok": True,
         "handoff_ok": True,
         "contact_ok": True,
+        "plain_ok": True,
         "wrong_price": False,
         "personal_data_leak": False,
         "missed_mandatory_handoff": False,
@@ -52,20 +53,38 @@ def _passing_assessment(case_id: str, *, passed: bool = True, **overrides: objec
         "values_comment": "",
         "handoff_comment": "",
         "contact_comment": "",
+        "plain_comment": "",
         "price_comment": "",
     }
     values.update(overrides)
     return Assessment(**values)  # type: ignore[arg-type]
 
 
-def test_golden_file_has_forty_cases_in_the_required_composition() -> None:
+def test_plain_text_rejects_markdown_and_manual_citations() -> None:
+    from lia_api.evals.evaluators import plain_text
+
+    example = _example(_outcomes())
+    bold = plain_text(_run("disponível por **R$ 599,90**.", ["search_catalog"], False), example)
+    cited = plain_text(_run("Pela seção 4.1 do manual, são 7 dias.", [], False), example)
+    plain = plain_text(
+        _run("- Yamaha C40 Nylon Natural: R$ 599,90", ["search_catalog"], False),
+        example,
+    )
+
+    assert bold["score"] == 0
+    assert cited["score"] == 0
+    assert plain["score"] == 1
+
+
+def test_golden_file_has_the_required_composition() -> None:
     raw = [
         json.loads(line)
         for line in GOLDEN_SET_PATH.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
 
-    assert len(raw) == 40
+    assert len(raw) == 41
+    assert "catalog-11-violoes-ate-1000" in {item["id"] for item in raw}
     assert Counter(item["category"] for item in raw) == REQUIRED_COMPOSITION
     assert {item["version"] for item in raw} == {1}
     assert all(item["outputs"]["forbid_phone_and_email"] is True for item in raw)
@@ -215,23 +234,23 @@ def test_judge_evaluator_uses_the_injected_judge() -> None:
     assert calls == ["R$ 599,90", "não sei"]
 
 
-def test_verdict_passes_only_at_36_of_40_with_the_three_gates_clear() -> None:
-    clean = [_passing_assessment(f"case-{index}") for index in range(36)]
+def test_verdict_passes_only_at_37_of_41_with_the_three_gates_clear() -> None:
+    clean = [_passing_assessment(f"case-{index}") for index in range(37)]
     tone_misses = [_passing_assessment(f"tone-{index}", passed=False) for index in range(4)]
     assert verdict(clean + tone_misses).ok is True
 
-    only_35 = [_passing_assessment(f"case-{index}") for index in range(35)]
-    only_35 += [_passing_assessment(f"miss-{index}", passed=False) for index in range(5)]
-    assert verdict(only_35).ok is False
+    only_36 = [_passing_assessment(f"case-{index}") for index in range(36)]
+    only_36 += [_passing_assessment(f"miss-{index}", passed=False) for index in range(5)]
+    assert verdict(only_36).ok is False
 
-    wrong_price = [_passing_assessment(f"case-{index}") for index in range(39)]
+    wrong_price = [_passing_assessment(f"case-{index}") for index in range(40)]
     wrong_price.append(_passing_assessment("bad-price", passed=False, wrong_price=True))
     failed = verdict(wrong_price)
-    assert failed.passed == 39
+    assert failed.passed == 40
     assert failed.wrong_prices == 1
     assert failed.ok is False
 
-    leaked = [_passing_assessment(f"case-{index}") for index in range(39)]
+    leaked = [_passing_assessment(f"case-{index}") for index in range(40)]
     leaked.append(
         _passing_assessment(
             "leak",
@@ -243,7 +262,7 @@ def test_verdict_passes_only_at_36_of_40_with_the_three_gates_clear() -> None:
     assert verdict(leaked).personal_data_leaks == 1
     assert verdict(leaked).ok is False
 
-    missed = [_passing_assessment(f"case-{index}") for index in range(39)]
+    missed = [_passing_assessment(f"case-{index}") for index in range(40)]
     missed.append(
         _passing_assessment("missed", passed=False, handoff_ok=False, missed_mandatory_handoff=True)
     )
@@ -311,7 +330,7 @@ def test_sync_replaces_remote_examples_from_the_file() -> None:
     assert dataset_id == "ds-existing"
     assert client.dataset_name == "lia-golden-v1"
     assert client.deleted == ["old-1", "old-2"]
-    assert len(client.created) == 40
+    assert len(client.created) == 41
     first = client.created[0]
     assert first["inputs"]["messages"]
     assert first["reference_outputs"]["forbid_phone_and_email"] is True
@@ -324,7 +343,7 @@ def test_sync_creates_the_dataset_when_it_is_missing() -> None:
 
     assert dataset_id == "ds-new"
     assert client.deleted == []
-    assert len(client.created) == 40
+    assert len(client.created) == 41
 
 
 def test_dict_shaped_run_is_scored_like_a_trace_object() -> None:

@@ -10,7 +10,7 @@ GOLDEN_VERSION = 1
 DATASET_NAME = "lia-golden-v1"
 DEFAULT_FROZEN_AT = "2026-11-03T10:00:00-04:00"
 REQUIRED_COMPOSITION = {
-    "catalog": 10,
+    "catalog": 11,
     "promotion": 5,
     "order": 8,
     "policy": 8,
@@ -56,7 +56,7 @@ class GoldenCase:
 
 
 def load_cases(path: Path | None = None) -> list[GoldenCase]:
-    """Read the golden set and reject a file that is not version 1 with 40 cases."""
+    """Read the golden set and reject a file that is not version 1 with the required cases."""
     source = path or GOLDEN_SET_PATH
     cases = [
         _parse_case(json.loads(line), index)
@@ -129,7 +129,8 @@ def _string_list(value: object, index: int, field: str) -> list[str]:
 
 def _require_composition(cases: list[GoldenCase]) -> None:
     if len(cases) != sum(REQUIRED_COMPOSITION.values()):
-        raise ValueError(f"Golden set must have 40 cases, found {len(cases)}.")
+        expected = sum(REQUIRED_COMPOSITION.values())
+        raise ValueError(f"Golden set must have {expected} cases, found {len(cases)}.")
     counts = Counter(case.category for case in cases)
     if dict(counts) != REQUIRED_COMPOSITION:
         raise ValueError(

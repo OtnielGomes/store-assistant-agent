@@ -135,6 +135,29 @@ def test_listing_keeps_only_active_products_with_stock() -> None:
     assert all("alternatives" not in product for product in result["products"])
 
 
+def test_search_reports_the_price_range_the_customer_stated() -> None:
+    result = _search(category="Violões", maximum_price="1000")
+
+    assert result["price_range"] == {"minimum_price": None, "maximum_price": "1000.00"}
+
+
+def test_minimum_price_keeps_only_products_at_or_above_it() -> None:
+    result = _search(category="Violões", minimum_price="2000")
+    names = {product["name"] for product in result["products"]}
+
+    assert "Takamine GD20 Dreadnought Natural" in names
+    assert "Yamaha C40 Nylon Natural" not in names
+    assert result["price_range"] == {"minimum_price": "2000.00", "maximum_price": None}
+
+
+def test_price_range_uses_the_promotional_price_when_one_is_active() -> None:
+    result = _search(category="Violões", maximum_price="2000")
+    names = {product["name"] for product in result["products"]}
+
+    assert "Crafter HT-100 Folk Aço Natural" in names
+    assert "Takamine GD20 Dreadnought Natural" not in names
+
+
 def test_filters_by_maximum_price_and_spec_values() -> None:
     priced = _search(category="Ukuleles", maximum_price="400")
     priced_names = {product["name"] for product in priced["products"]}

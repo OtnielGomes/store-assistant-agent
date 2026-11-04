@@ -25,6 +25,10 @@ Strings, cables, picks, pedals, amplifiers, cases, and similar goods. The store 
 Whether a Product can be bought right now: available or temporarily unavailable. Never expressed to the customer as a stock count.
 _Avoid_: stock level, inventory
 
+**Price Range**:
+The minimum price, maximum price, or both that a Customer states when looking for Products. It is the Customer's search limit, not a Fact, and is never presented as the price of a Product.
+_Avoid_: budget, price cap, price ceiling
+
 **Discontinued Product**:
 A Product that is no longer part of the catalog. The Assistant says so and offers equivalent available Products.
 

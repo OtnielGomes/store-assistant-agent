@@ -36,6 +36,11 @@ LEFT JOIN LATERAL (
 ) AS promo ON TRUE
 """
 
+# Promotional price when a promotion is active, otherwise the shelf price.
+_EFFECTIVE_PRICE_SQL = """
+COALESCE(ROUND(p.price * (100 - promo.discount_percent) / 100, 2), p.price)
+"""
+
 
 def build_catalog_search_tool(database_url: str):
     """Tool the assistant uses to read catalog Facts. The model never writes SQL."""
@@ -44,25 +49,31 @@ def build_catalog_search_tool(database_url: str):
     def search_catalog(
         name: str | None = None,
         category: str | None = None,
+        minimum_price: str | None = None,
         maximum_price: str | None = None,
         specs: dict[str, str] | None = None,
     ) -> str:
         """Busca produtos do Empório da Música.
 
         Com name, devolve produtos em qualquer status. Sem name, lista apenas
-        produtos ativos com estoque. Filtra por category, maximum_price (preço
-        de tabela em reais) e specs (valores exatos, por exemplo strings=nylon).
+        produtos ativos com estoque. Filtra por category, minimum_price,
+        maximum_price (preço efetivo em reais, inclusivo: promocional quando
+        há promoção ativa, senão o de tabela) e specs (valores exatos, por
+        exemplo strings=nylon). A faixa aplicada volta em price_range.
         Produto descontinuado, em breve ou temporariamente indisponível inclui
-        alternatives: produtos ativos com estoque na mesma categoria. Categoria
-        sem nenhum produto volta em unstocked_categories. Na busca por nome,
-        promoções só inativas voltam em inactive_promotions, sem preço
-        promocional. A resposta não traz quantidade em estoque.
+        alternatives: produtos ativos com estoque na mesma categoria, dentro
+        da mesma faixa. Categoria sem nenhum produto volta em
+        unstocked_categories. Na busca por nome, promoções só inativas voltam
+        em inactive_promotions, sem preço promocional. A resposta não traz
+        quantidade em estoque.
         """
+        minimum = Decimal(minimum_price) if minimum_price else None
         price = Decimal(maximum_price) if maximum_price else None
         result = execute_catalog_search(
             database_url,
             name=name,
             category=category,
+            minimum_price=minimum,
             maximum_price=price,
             specs=specs,
         )
@@ -76,6 +87,7 @@ def execute_catalog_search(
     *,
     name: str | None = None,
     category: str | None = None,
+    minimum_price: Decimal | None = None,
     maximum_price: Decimal | None = None,
     specs: dict[str, str] | None = None,
 ) -> dict[str, object]:
@@ -85,6 +97,7 @@ def execute_catalog_search(
     params = {
         "name": name_pattern,
         "category": category_pattern,
+        "minimum_price": minimum_price,
         "maximum_price": maximum_price,
         "specs": spec_filter,
         "name_lookup": name_pattern is not None,
@@ -96,8 +109,12 @@ def execute_catalog_search(
             WHERE (%(name)s::text IS NULL OR p.name ILIKE %(name)s ESCAPE '\\')
               AND (%(category)s::text IS NULL OR c.name ILIKE %(category)s ESCAPE '\\')
               AND (
+                    %(minimum_price)s::numeric IS NULL
+                    OR {_EFFECTIVE_PRICE_SQL} >= %(minimum_price)s
+              )
+              AND (
                     %(maximum_price)s::numeric IS NULL
-                    OR p.price <= %(maximum_price)s
+                    OR {_EFFECTIVE_PRICE_SQL} <= %(maximum_price)s
               )
               AND (%(specs)s::jsonb IS NULL OR p.specs @> %(specs)s)
               AND (
@@ -128,7 +145,7 @@ def execute_catalog_search(
         products = [
             _present(
                 row,
-                _alternatives(connection, row, maximum_price, spec_filter)
+                _alternatives(connection, row, minimum_price, maximum_price, spec_filter)
                 if name_pattern is not None and not _is_buyable(row)
                 else None,
                 inactive_promotions=_named_inactive_promotions(row)
@@ -137,12 +154,17 @@ def execute_catalog_search(
             )
             for row in rows
         ]
-    return {"products": products, "unstocked_categories": unstocked}
+    return {
+        "products": products,
+        "unstocked_categories": unstocked,
+        "price_range": _price_range(minimum_price, maximum_price),
+    }
 
 
 def _alternatives(
     connection: psycopg.Connection,
     product: dict[str, object],
+    minimum_price: Decimal | None,
     maximum_price: Decimal | None,
     specs: Jsonb | None,
 ) -> list[dict[str, object]]:
@@ -153,13 +175,15 @@ def _alternatives(
           AND p.product_id <> %(product_id)s
           AND p.status = 'active'
           AND p.stock_quantity > 0
-          AND (%(maximum_price)s::numeric IS NULL OR p.price <= %(maximum_price)s)
+          AND (%(minimum_price)s::numeric IS NULL OR {_EFFECTIVE_PRICE_SQL} >= %(minimum_price)s)
+          AND (%(maximum_price)s::numeric IS NULL OR {_EFFECTIVE_PRICE_SQL} <= %(maximum_price)s)
           AND (%(specs)s::jsonb IS NULL OR p.specs @> %(specs)s)
         ORDER BY p.name
         """,
         {
             "category_id": product["category_id"],
             "product_id": product["product_id"],
+            "minimum_price": minimum_price,
             "maximum_price": maximum_price,
             "specs": specs,
         },
@@ -221,6 +245,15 @@ def _promotion(row: dict[str, object]) -> dict[str, str] | None:
 def _promotional_price(price: Decimal, discount_percent: Decimal) -> Decimal:
     factor = (Decimal("100") - discount_percent) / Decimal("100")
     return (price * factor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _price_range(
+    minimum_price: Decimal | None, maximum_price: Decimal | None
+) -> dict[str, str | None]:
+    return {
+        "minimum_price": None if minimum_price is None else _money(minimum_price),
+        "maximum_price": None if maximum_price is None else _money(maximum_price),
+    }
 
 
 def _money(value: object) -> str:

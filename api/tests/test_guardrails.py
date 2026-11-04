@@ -27,6 +27,47 @@ def _prepare_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
 
+def test_emphasis_markers_are_removed_from_a_reply() -> None:
+    from lia_api.guardrails import to_plain_text
+
+    text = "O Takamine está disponível por **R$ 2.199,00** e __sem desconto__."
+    assert to_plain_text(text) == "O Takamine está disponível por R$ 2.199,00 e sem desconto."
+
+
+def test_headings_code_marks_and_star_lists_become_plain_text() -> None:
+    from lia_api.guardrails import to_plain_text
+
+    text = "# Violões\n* Tagima Memphis: `R$ 429,90`\n+ Yamaha C40: *disponível*"
+    assert to_plain_text(text) == "Violões\n- Tagima Memphis: R$ 429,90\n- Yamaha C40: disponível"
+
+
+def test_customer_receives_the_reply_without_markdown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_catalog(monkeypatch)
+    model = ScriptedChatModel(
+        responses=[
+            ScriptedToolCall(name="search_catalog", args={"name": "Yamaha C40"}),
+            "O Yamaha C40 Nylon Natural custa **R$ 599.90**.",
+        ]
+    )
+
+    from lia_api.main import create_app
+
+    with TestClient(create_app(model=model)) as client:
+        response = client.post(
+            "/chat",
+            json={
+                "conversation_id": f"guard-plain-{uuid4()}",
+                "message": "Quanto custa o Yamaha C40?",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["reply"] == "O Yamaha C40 Nylon Natural custa R$ 599.90."
+    assert response.json()["handoff"] is None
+
+
 def test_overlong_message_gets_a_friendly_reply_and_never_reaches_the_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

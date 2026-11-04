@@ -34,7 +34,10 @@ def _echo_retrieved_sections(messages: list[BaseMessage]) -> AIMessage:
     retrieved = _tool_text(messages)
     if "Seção" not in retrieved:
         return AIMessage(content="sem política recuperada")
-    return AIMessage(content=retrieved)
+    visible = "\n".join(
+        line for line in retrieved.splitlines() if not line.startswith("Seção ")
+    )
+    return AIMessage(content=visible)
 
 
 def _search_call(query: str) -> AIMessage:
@@ -70,39 +73,45 @@ def _ask(monkeypatch: pytest.MonkeyPatch, message: str, reply_from) -> str:
     return response.json()["reply"]
 
 
+def test_prompt_keeps_replies_in_plain_text_and_out_of_the_manual() -> None:
+    from lia_api.prompt import STORE_SYSTEM_PROMPT
+
+    folded = STORE_SYSTEM_PROMPT.casefold()
+    assert "não cite o número da seção" in folded
+    assert "não mencione o manual" in folded
+    assert "sem negrito" in folded
+    assert "primeira resposta da conversa" in folded
+    assert "nenhum produto" in folded
+    assert "citando o número da seção" not in folded
+
+
 def test_lia_answers_hours_payment_exchange_shipping_warranty_and_privacy_from_sections(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     questions = {
         "qual o horário de funcionamento?": (
-            "Seção 2",
             "09:00 às 18:00",
             "09:00 às 13:00",
             "Fechado",
         ),
         "quais as formas de pagamento?": (
-            "Seção 3",
             "PIX",
             "5% de desconto sobre o preço de tabela",
             "Parcela mínima de R$ 100,00",
         ),
-        "comprei e me arrependi, posso devolver?": (
-            "Seção 4.1",
-            "7 (sete) dias corridos",
-        ),
+        "comprei e me arrependi, posso devolver?": ("7 (sete) dias corridos",),
         "quanto custa o frete para Campo Grande?": (
-            "Seção 5.1",
             "Frete grátis para pedidos acima de R$ 500,00",
             "taxa fixa de R$ 35,00",
         ),
-        "qual é a garantia legal?": ("Seção 8.1", "90 (noventa) dias"),
+        "qual é a garantia legal?": ("90 (noventa) dias",),
         "como vocês tratam a privacidade dos meus dados?": (
-            "Seção 9",
             "Lei Geral de Proteção de Dados",
         ),
     }
     for message, expected in questions.items():
         reply = _ask(monkeypatch, message, _echo_retrieved_sections)
+        assert "Seção" not in reply
         for snippet in expected:
             assert snippet in reply
 

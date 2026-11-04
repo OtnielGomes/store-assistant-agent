@@ -65,6 +65,18 @@ _MONTHS = {
 }
 
 
+_HEADING = re.compile(r"^\s{0,3}#{1,6}\s*")
+_LIST_MARKER = re.compile(r"^(\s*)[*+]\s+")
+_EMPHASIS = re.compile(r"(?<!\*)\*(?!\s)([^*\n]+)\*(?!\*)|(?<!_)_(?!\s)([^_\n]+)_(?!_)")
+
+
+def to_plain_text(text: str) -> str:
+    """Drop markdown markers. Prices and dates stay so the output check still sees them."""
+    plain = text.replace("```", "").replace("**", "").replace("__", "").replace("`", "")
+    lines = [_HEADING.sub("", _LIST_MARKER.sub(r"\1- ", line)) for line in plain.split("\n")]
+    return _EMPHASIS.sub(lambda match: match.group(1) or match.group(2), "\n".join(lines))
+
+
 def exceeds_message_length(text: str) -> bool:
     return len(text) > MAX_CUSTOMER_MESSAGE_LENGTH
 

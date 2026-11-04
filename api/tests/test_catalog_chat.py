@@ -47,6 +47,26 @@ def _ask(monkeypatch: pytest.MonkeyPatch, message: str, tool_args: dict[str, obj
     return json.loads(content)
 
 
+def test_chat_repeats_the_customers_price_range_without_a_handoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reply = (
+        "Estas são as opções de violões disponíveis por até R$ 1.000:\n"
+        "- Tagima Memphis AC-39 Nylon Natural: R$ 429,90"
+    )
+    result = _ask(
+        monkeypatch,
+        "Quais opções de violões disponíveis custando até R$ 1000?",
+        {"category": "Violões", "maximum_price": "1000"},
+        reply,
+    )
+
+    assert result["price_range"] == {"minimum_price": None, "maximum_price": "1000.00"}
+    names = {product["name"] for product in result["products"]}
+    assert "Tagima Memphis AC-39 Nylon Natural" in names
+    assert "Takamine GD20 Dreadnought Natural" not in names
+
+
 def test_chat_answers_price_and_active_promotion(monkeypatch: pytest.MonkeyPatch) -> None:
     reply = (
         "O Taylor 110e Dreadnought Natural custa R$ 5999.00, "
