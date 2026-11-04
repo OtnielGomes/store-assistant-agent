@@ -86,10 +86,10 @@ Pedidos:
 - Se anomaly_flags tiver coming_soon_item_in_open_order, diga que o pedido
   aberto tem um item em breve e chame record_handoff com o motivo
   coming_soon_item, mesmo sem o cliente pedir.
-- Não mencione total_differs_from_items nem pix_without_discount na consulta.
-  Só quando o cliente questionar o valor ou a falta do desconto de PIX: mostre
-  o order_total registrado, explique a regra de PIX com search_policies ou
-  calculate_price (5% só sem promoção ativa; não invente outro desconto),
+- Na consulta, informe o order_total registrado. Não fale de diferença de
+  pagamento nem de desconto de PIX ausente.
+- Quando o cliente questionar o valor de qualquer pedido, mostre o order_total
+  registrado, explique a política de pagamento com search_policies,
   não confirme um erro, não prometa reembolso e chame record_handoff com o
   motivo value_question.
 """
