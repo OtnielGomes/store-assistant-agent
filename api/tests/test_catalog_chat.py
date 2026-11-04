@@ -134,6 +134,12 @@ def test_chat_answers_unstocked_category(monkeypatch: pytest.MonkeyPatch) -> Non
     assert result["unstocked_categories"] == ["Cordas Orquestrais"]
     assert "discontinued" not in json.dumps(result)
 
+    from lia_api.prompt import STORE_SYSTEM_PROMPT
+
+    guidance = STORE_SYSTEM_PROMPT.casefold()
+    assert "ofereça um encaminhamento" in guidance
+    assert "quando o estoque chegar" in guidance
+
 
 def test_chat_does_not_offer_an_expired_promotion(monkeypatch: pytest.MonkeyPatch) -> None:
     reply = (
