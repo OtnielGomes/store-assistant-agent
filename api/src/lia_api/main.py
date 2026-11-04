@@ -57,7 +57,11 @@ def create_app(model: BaseChatModel | None = None) -> FastAPI:
             return
         with PostgresSaver.from_conn_string(settings.database_url) as checkpointer:
             checkpointer.setup()
-            app.state.graph = build_graph(chat_model, checkpointer)
+            app.state.graph = build_graph(
+                chat_model,
+                checkpointer,
+                database_url=settings.database_url,
+            )
             yield
 
     app = FastAPI(title="Lia", lifespan=lifespan)

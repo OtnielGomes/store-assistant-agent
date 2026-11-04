@@ -1,13 +1,25 @@
+from collections.abc import Callable, Sequence
+from typing import Any
+
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
-from pydantic import PrivateAttr
+from langchain_core.runnables import Runnable
+from langchain_core.tools import BaseTool
+from pydantic import BaseModel, Field, PrivateAttr
+
+
+class ScriptedToolCall(BaseModel):
+    """A predetermined tool call emitted before the next scripted reply."""
+
+    name: str
+    args: dict[str, Any] = Field(default_factory=dict)
 
 
 class ScriptedChatModel(BaseChatModel):
     """Chat model that returns predetermined replies and records its input."""
 
-    responses: list[str]
+    responses: list[str | ScriptedToolCall]
     _calls: list[list[BaseMessage]] = PrivateAttr(default_factory=list)
     _index: int = PrivateAttr(default=0)
 
@@ -19,6 +31,17 @@ class ScriptedChatModel(BaseChatModel):
     def calls(self) -> list[list[BaseMessage]]:
         return self._calls
 
+    def bind_tools(
+        self,
+        tools: Sequence[dict[str, Any] | type | Callable[..., Any] | BaseTool],
+        *,
+        tool_choice: str | None = None,
+        **kwargs: Any,
+    ) -> Runnable[Any, AIMessage]:
+        if tool_choice is not None:
+            kwargs["tool_choice"] = tool_choice
+        return self.bind(tools=tools, **kwargs)
+
     def _generate(
         self,
         messages: list[BaseMessage],
@@ -27,6 +50,20 @@ class ScriptedChatModel(BaseChatModel):
         **kwargs: object,
     ) -> ChatResult:
         self._calls.append(list(messages))
-        text = self.responses[self._index]
+        step = self.responses[self._index]
         self._index += 1
-        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=text))])
+        if isinstance(step, ScriptedToolCall):
+            message = AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": step.name,
+                        "args": step.args,
+                        "id": f"call_{self._index}",
+                        "type": "tool_call",
+                    }
+                ],
+            )
+        else:
+            message = AIMessage(content=step)
+        return ChatResult(generations=[ChatGeneration(message=message)])
