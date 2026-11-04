@@ -16,7 +16,8 @@ from lia_api.clock import FrozenClock, SystemClock
 from lia_api.graph import build_graph
 from lia_api.handoff import HandoffStore, build_record_handoff_tool
 from lia_api.model import build_chat_model, configure_langsmith
-from lia_api.settings import load_settings
+from lia_api.policies import Embedder, openai_embedder
+from lia_api.settings import Settings, load_settings
 
 
 class HealthResponse(BaseModel):
@@ -84,9 +85,21 @@ def _clock_for_request(
     return FrozenClock(simulated_at, timezone)
 
 
+def _lazy_openai_embedder(settings: Settings) -> Embedder:
+    holder: list[Embedder] = []
+
+    def embed(texts: list[str]) -> list[list[float]]:
+        if not holder:
+            holder.append(openai_embedder(settings))
+        return holder[0](texts)
+
+    return embed
+
+
 def create_app(
     model: BaseChatModel | None = None,
     clock: SystemClock | FrozenClock | None = None,
+    embedder: Embedder | None = None,
 ) -> FastAPI:
     settings = load_settings()
     configure_langsmith(settings)
@@ -96,6 +109,7 @@ def create_app(
     timezone = ZoneInfo(settings.app_timezone)
     app_clock = clock or SystemClock(timezone)
     store = HandoffStore(settings.database_url)
+    policy_embedder = embedder if embedder is not None else _lazy_openai_embedder(settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -114,6 +128,7 @@ def create_app(
                 checkpointer,
                 [handoff_tool],
                 database_url=settings.database_url,
+                embedder=policy_embedder,
             )
             yield
 

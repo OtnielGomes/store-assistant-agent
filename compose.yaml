@@ -20,6 +20,8 @@ services:
   ingest:
     build:
       context: ./api
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-lia}:${POSTGRES_PASSWORD:-lia}@db:5432/${POSTGRES_DB:-lia}
       DATA_DIR: /data

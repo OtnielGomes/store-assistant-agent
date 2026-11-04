@@ -1,4 +1,8 @@
-"""Load the store CSVs into PostgreSQL without correcting anomalies."""
+"""Load store facts and the policy manual into PostgreSQL.
+
+Fact rows keep the CSV anomalies. Policy sections are embedded by the caller
+of ``ingest_policies``; ``main`` uses the OpenAI embedder.
+"""
 
 import csv
 import json
@@ -302,6 +306,14 @@ def main() -> None:
     if not database_url:
         raise SystemExit("DATABASE_URL is required to load the store data.")
     load_store(database_url)
+    from lia_api.policies import ingest_policies, openai_embedder
+    from lia_api.settings import load_settings
+
+    settings = load_settings()
+    if not settings.openai_api_key:
+        raise SystemExit("OPENAI_API_KEY is required to embed policy sections.")
+    stored = ingest_policies(database_url, openai_embedder(settings))
+    print(f"Stored {stored} policy chunks")
 
 
 if __name__ == "__main__":
