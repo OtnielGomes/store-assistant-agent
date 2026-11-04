@@ -4,6 +4,7 @@ from typing import Literal
 
 import psycopg
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.postgres import PostgresSaver
@@ -60,6 +61,12 @@ def create_app(model: BaseChatModel | None = None) -> FastAPI:
             yield
 
     app = FastAPI(title="Lia", lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
+    )
 
     @app.get("/health")
     def health() -> HealthResponse:
