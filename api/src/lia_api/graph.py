@@ -5,6 +5,7 @@ from langgraph.graph import START, MessagesState, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
+from lia_api.calculator import build_calculator_tool
 from lia_api.catalog import build_catalog_search_tool
 from lia_api.policies import Embedder, build_policy_search_tool
 from lia_api.prompt import STORE_SYSTEM_PROMPT
@@ -20,6 +21,7 @@ def build_graph(
     selected = list(tools or [])
     if database_url:
         selected.append(build_catalog_search_tool(database_url))
+        selected.append(build_calculator_tool(database_url))
         if embedder is not None:
             selected.append(build_policy_search_tool(database_url, embedder))
     bound_model = model.bind_tools(selected)

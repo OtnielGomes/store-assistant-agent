@@ -17,6 +17,7 @@ dependencies = [
     "psycopg-pool>=3.3.3",
     "psycopg[binary]>=3.3.7",
     "pydantic-settings>=2.16.2",
+    "pypdf>=6.21.4",
 ]
 
 [build-system]
