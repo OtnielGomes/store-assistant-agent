@@ -10,6 +10,7 @@ from lia_api.catalog import build_catalog_search_tool
 from lia_api.orders import build_order_lookup_tool
 from lia_api.policies import Embedder, build_policy_search_tool
 from lia_api.prompt import STORE_SYSTEM_PROMPT
+from lia_api.returns import build_return_window_tool
 
 
 def build_graph(
@@ -23,6 +24,7 @@ def build_graph(
     if database_url:
         selected.append(build_catalog_search_tool(database_url))
         selected.append(build_order_lookup_tool(database_url))
+        selected.append(build_return_window_tool(database_url))
         selected.append(build_calculator_tool(database_url))
         if embedder is not None:
             selected.append(build_policy_search_tool(database_url, embedder))
