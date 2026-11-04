@@ -164,8 +164,9 @@ def _assert_handoff_rules(prompt: str) -> None:
     assert "overdue_delivery" in prompt
     assert "coming_soon_item" in prompt
     assert "value_question" in prompt
-    assert "total_differs_from_items" in prompt
-    assert "pix_without_discount" in prompt
+    assert "total_differs_from_items" not in prompt
+    assert "pix_without_discount" not in prompt
+    assert "qualquer pedido" in folded
     assert "não confirme erro" in folded or "não confirme um erro" in folded
     assert "não prometa reembolso" in folded
 
@@ -470,7 +471,8 @@ def test_value_divergence_is_silent_until_the_customer_questions_the_amount(
     assert "erro" not in first["reply"].lower()
     lookup = json.loads(_tool_message(model.calls[1], "lookup_order"))
     assert example["anomaly_flags"] == lookup["order"]["anomaly_flags"]
-    assert example["anomaly_flags"]
+    assert "pix_without_discount" not in lookup["order"]["anomaly_flags"]
+    assert "total_differs_from_items" not in lookup["order"]["anomaly_flags"]
     assert second["handoff"]["reason"] == "value_question"
     assert example["order_total"] in second["reply"]
     assert "5% de desconto sobre o preço de tabela" in second["reply"]
@@ -482,6 +484,79 @@ def test_value_divergence_is_silent_until_the_customer_questions_the_amount(
     assert FORBIDDEN_PHONE not in second["reply"]
     assert_no_customer_contact(second["reply"], example)
     prompt = _system_text(model.calls[0])
-    assert "pix_without_discount" in prompt
-    assert "total_differs_from_items" in prompt
+    assert "pix_without_discount" not in prompt
+    assert "total_differs_from_items" not in prompt
+    assert "qualquer pedido" in prompt.lower()
+    assert "value_question" in prompt
+
+
+def test_value_question_on_an_order_without_payment_flags_hands_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    example = ORDERS[1]
+    assert example["anomaly_flags"] == []
+    assert example["payment_method"] != "pix"
+    question = "Esse valor do pedido está certo?"
+    neutral = _lookup_reply(example)
+    model, client = _client(
+        monkeypatch,
+        [
+            ScriptedToolCall(
+                name="lookup_order",
+                args={
+                    "order_number": example["order_number"],
+                    "phone_last_four": example["phone_last_four"],
+                },
+            ),
+            neutral,
+            ScriptedToolCall(
+                name="search_policies",
+                args={"query": "pagamento PIX parcelas"},
+            ),
+            ScriptedToolCall(
+                name="record_handoff",
+                args={
+                    "reason": "value_question",
+                    "summary": "Cliente questionou o valor do pedido 2.",
+                    "order_id": 2,
+                },
+            ),
+            _value_reply,
+        ],
+    )
+    conversation_id = f"value-plain-{uuid4()}"
+    with client:
+        opened = client.post(
+            "/chat",
+            json={
+                "conversation_id": conversation_id,
+                "message": "Consulta o pedido 2. Os quatro dígitos são 6543.",
+            },
+        )
+        questioned = client.post(
+            "/chat",
+            json={"conversation_id": conversation_id, "message": question},
+        )
+
+    first = opened.json()
+    second = questioned.json()
+    assert first["handoff"] is None
+    assert "diverg" not in first["reply"].lower()
+    assert "desconto" not in first["reply"].lower()
+    lookup = json.loads(_tool_message(model.calls[1], "lookup_order"))
+    assert lookup["order"]["anomaly_flags"] == []
+    assert lookup["order"]["order_total"] == "5999.00"
+    assert second["handoff"]["reason"] == "value_question"
+    assert "5999.00" in second["reply"]
+    assert "5% de desconto sobre o preço de tabela" in second["reply"]
+    assert "Não confirmo um erro" in second["reply"]
+    assert "não prometo reembolso" in second["reply"]
+    assert DURING_HOURS in second["reply"]
+    assert FORBIDDEN_PHONE not in second["reply"]
+    assert_no_customer_contact(second["reply"], example)
+    prompt = _system_text(model.calls[0])
+    assert "pix_without_discount" not in prompt
+    assert "total_differs_from_items" not in prompt
+    assert "qualquer pedido" in prompt.lower()
+    assert "search_policies" in prompt
     assert "value_question" in prompt
