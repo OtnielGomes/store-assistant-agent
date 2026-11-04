@@ -55,3 +55,39 @@ def test_startup_rejects_temperature_when_reasoning_effort_is_not_none(
     message = str(exc_info.value)
     assert "OPENAI_TEMPERATURE" in message
     assert "OPENAI_REASONING_EFFORT" in message
+
+
+def test_chat_model_uses_zero_temperature_when_it_is_absent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _clear_configured_env(monkeypatch)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("OPENAI_REASONING_EFFORT", "none")
+
+    from lia_api.model import build_chat_model
+    from lia_api.settings import Settings
+
+    settings = Settings(_env_file=None)
+
+    assert "openai_temperature" not in settings.model_fields_set
+    model = build_chat_model(settings)
+    assert model.temperature == 0
+    assert model.reasoning_effort is None
+
+
+def test_chat_model_omits_temperature_when_reasoning_effort_is_not_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _clear_configured_env(monkeypatch)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("OPENAI_REASONING_EFFORT", "low")
+
+    from lia_api.model import build_chat_model
+    from lia_api.settings import Settings
+
+    settings = Settings(_env_file=None)
+
+    assert "openai_temperature" not in settings.model_fields_set
+    model = build_chat_model(settings)
+    assert model.temperature is None
+    assert model.reasoning_effort == "low"

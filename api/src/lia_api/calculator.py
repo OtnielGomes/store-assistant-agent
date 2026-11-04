@@ -8,7 +8,6 @@ from pathlib import Path
 import psycopg
 from langchain_core.tools import tool
 from psycopg.rows import dict_row
-from pypdf import PdfReader
 
 from lia_api.ingest import data_dir
 
@@ -220,11 +219,9 @@ def _manual_text(directory: Path) -> str:
     markdowns = sorted(manual_dir.rglob("*.md")) if manual_dir.is_dir() else []
     if not markdowns:
         markdowns = sorted(path for path in directory.glob("*.md") if path.is_file())
-    if markdowns:
-        return "\n".join(path.read_text(encoding="utf-8") for path in markdowns)
-    pdf_path = directory / "políticas_da_loja.pdf"
-    reader = PdfReader(str(pdf_path))
-    return "\n".join(page.extract_text(extraction_mode="layout") or "" for page in reader.pages)
+    if not markdowns:
+        return ""
+    return "\n".join(path.read_text(encoding="utf-8") for path in markdowns)
 
 
 def _money(value: Decimal) -> str:

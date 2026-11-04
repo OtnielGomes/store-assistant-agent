@@ -81,6 +81,13 @@ def test_chat_handoff_during_business_hours_lists_newest_first(
     assert newer.status_code == 200
     assert newer.json()["reply"].startswith("O retorno é em até 24 horas úteis")
     assert newer.json()["handoff"]["reason"] == "complaint"
+    system = next(
+        message.content for message in newer_model.calls[0] if message.type == "system"
+    )
+    assert isinstance(system, str)
+    guidance = system.casefold()
+    assert "empatia" in guidance
+    assert "24 horas úteis" in guidance
 
     assert queue.status_code == 200
     rows = queue.json()
