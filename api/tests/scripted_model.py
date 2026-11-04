@@ -16,10 +16,13 @@ class ScriptedToolCall(BaseModel):
     args: dict[str, Any] = Field(default_factory=dict)
 
 
+Reply = str | AIMessage | ScriptedToolCall | Callable[[list[BaseMessage]], AIMessage]
+
+
 class ScriptedChatModel(BaseChatModel):
     """Chat model that returns predetermined replies and records its input."""
 
-    responses: list[str | ScriptedToolCall]
+    responses: list[Any]
     _calls: list[list[BaseMessage]] = PrivateAttr(default_factory=list)
     _index: int = PrivateAttr(default=0)
 
@@ -50,7 +53,7 @@ class ScriptedChatModel(BaseChatModel):
         **kwargs: object,
     ) -> ChatResult:
         self._calls.append(list(messages))
-        step = self.responses[self._index]
+        step: Reply = self.responses[self._index]
         self._index += 1
         if isinstance(step, ScriptedToolCall):
             message = AIMessage(
@@ -64,6 +67,12 @@ class ScriptedChatModel(BaseChatModel):
                     }
                 ],
             )
-        else:
+        elif isinstance(step, str):
             message = AIMessage(content=step)
+        elif isinstance(step, AIMessage):
+            message = step
+        elif callable(step):
+            message = step(list(messages))
+        else:
+            raise TypeError(f"Unsupported scripted response: {type(step)!r}")
         return ChatResult(generations=[ChatGeneration(message=message)])
