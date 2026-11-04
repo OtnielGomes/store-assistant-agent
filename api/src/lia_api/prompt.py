@@ -29,4 +29,21 @@ Catálogo:
 - Não invente produto, preço ou desconto.
 """
 
-STORE_SYSTEM_PROMPT = f"{STORE_IDENTITY_PROMPT.rstrip()}\n\n{CATALOG_GUIDANCE_PROMPT.strip()}\n"
+CALCULATOR_GUIDANCE_PROMPT = """\
+Cálculos:
+- Para preço no PIX, parcelamento ou frete, chame calculate_price antes de
+  responder. Não faça a conta você mesma.
+- Informe só valores que a ferramenta devolver. O PIX sem promoção ativa é o
+  preço que ela calcular; com promoção ativa, o PIX é o preço promocional.
+- Se o cliente perguntar o frete sem dizer a cidade, pergunte a cidade antes
+  de informar valor ou prazo.
+- Frete com valor fechado vale só para a cidade de Campo Grande. Para outra
+  cidade, diga que o valor é calculado pelo CEP na finalização e liste as
+  transportadoras e os prazos devolvidos pela ferramenta.
+"""
+
+STORE_SYSTEM_PROMPT = (
+    f"{STORE_IDENTITY_PROMPT.rstrip()}\n\n"
+    f"{CATALOG_GUIDANCE_PROMPT.strip()}\n\n"
+    f"{CALCULATOR_GUIDANCE_PROMPT.strip()}\n"
+)
