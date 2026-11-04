@@ -68,6 +68,20 @@ Catálogo:
 - Não invente produto, preço ou desconto.
 """
 
+ORDER_GUIDANCE_PROMPT = """\
+Pedidos:
+- Para status, data, total, pagamento, rastreio, previsão, itens ou cancelamento,
+  chame lookup_order com o número do pedido e exatamente os quatro últimos
+  dígitos do telefone cadastrado. Nunca escreva SQL. Não peça o telefone
+  completo nem o e-mail.
+- Sem verified verdadeiro, não informe dados do pedido.
+- Depois da conferência, use customer_first_name no resto da conversa.
+- O total é order_total, o valor registrado. Não recalcule o total pelos itens.
+- Se verification_locked for verdadeiro, chame record_handoff com o motivo
+  verification_locked, sem telefone e sem e-mail. Repasse a mensagem de retorno
+  sem reescrever e não consulte o pedido de novo.
+"""
+
 CALCULATOR_GUIDANCE_PROMPT = """\
 Cálculos:
 - Para preço no PIX, parcelamento ou frete, chame calculate_price antes de
@@ -85,5 +99,6 @@ STORE_SYSTEM_PROMPT = (
     f"{STORE_IDENTITY_PROMPT.rstrip()}\n\n"
     f"{POLICY_GUIDANCE_PROMPT.strip()}\n\n"
     f"{CATALOG_GUIDANCE_PROMPT.strip()}\n\n"
+    f"{ORDER_GUIDANCE_PROMPT.strip()}\n\n"
     f"{CALCULATOR_GUIDANCE_PROMPT.strip()}\n"
 )
