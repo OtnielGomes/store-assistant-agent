@@ -1,9 +1,12 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Literal
 
 import psycopg
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage
+from langgraph.checkpoint.postgres import PostgresSaver
 from pydantic import BaseModel
 
 from lia_api.graph import build_graph
@@ -44,8 +47,19 @@ def create_app(model: BaseChatModel | None = None) -> FastAPI:
     chat_model = model
     if chat_model is None and settings.openai_api_key:
         chat_model = build_chat_model(settings)
-    graph = build_graph(chat_model) if chat_model is not None else None
-    app = FastAPI(title="Lia")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        if chat_model is None:
+            app.state.graph = None
+            yield
+            return
+        with PostgresSaver.from_conn_string(settings.database_url) as checkpointer:
+            checkpointer.setup()
+            app.state.graph = build_graph(chat_model, checkpointer)
+            yield
+
+    app = FastAPI(title="Lia", lifespan=lifespan)
 
     @app.get("/health")
     def health() -> HealthResponse:
@@ -58,10 +72,14 @@ def create_app(model: BaseChatModel | None = None) -> FastAPI:
         return HealthResponse(status="healthy", database="connected")
 
     @app.post("/chat")
-    def chat(request: ChatRequest) -> ChatResponse:
+    def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
+        graph = http_request.app.state.graph
         if graph is None:
             raise RuntimeError("OPENAI_API_KEY is required before Lia can answer.")
-        result = graph.invoke({"messages": [HumanMessage(content=request.message)]})
+        result = graph.invoke(
+            {"messages": [HumanMessage(content=request.message)]},
+            {"configurable": {"thread_id": request.conversation_id}},
+        )
         reply = _reply_text(result["messages"][-1].content)
         return ChatResponse(reply=reply)
 

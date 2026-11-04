@@ -6,7 +6,7 @@ from langgraph.graph.state import CompiledStateGraph
 from lia_api.prompt import STORE_SYSTEM_PROMPT
 
 
-def build_graph(model: BaseChatModel) -> CompiledStateGraph:
+def build_graph(model: BaseChatModel, checkpointer: object | None = None) -> CompiledStateGraph:
     def respond(state: MessagesState) -> dict[str, list[BaseMessage]]:
         reply = model.invoke([SystemMessage(content=STORE_SYSTEM_PROMPT), *state["messages"]])
         return {"messages": [reply]}
@@ -15,4 +15,4 @@ def build_graph(model: BaseChatModel) -> CompiledStateGraph:
     graph.add_node("respond", respond)
     graph.add_edge(START, "respond")
     graph.add_edge("respond", END)
-    return graph.compile()
+    return graph.compile(checkpointer=checkpointer)

@@ -48,3 +48,44 @@ def test_chat_returns_scripted_reply_and_gives_the_model_store_identity(
     assert "contato@emporiodamusica.com.br" in content
     assert "assistente virtual" in content.lower()
     assert "(67) 3341-4444" not in content
+
+
+def test_follow_up_keeps_context_and_a_new_conversation_does_not(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_env(monkeypatch)
+    model = ScriptedChatModel(responses=["um", "dois", "tres"])
+
+    from lia_api.main import create_app
+
+    with TestClient(create_app(model=model)) as client:
+        first = client.post(
+            "/chat",
+            json={"conversation_id": "conv-memory", "message": "Meu nome é Ana"},
+        )
+        second = client.post(
+            "/chat",
+            json={"conversation_id": "conv-memory", "message": "Qual é o meu nome?"},
+        )
+        fresh = client.post(
+            "/chat",
+            json={"conversation_id": "conv-fresh", "message": "Olá de novo"},
+        )
+
+    assert first.json()["reply"] == "um"
+    assert second.json()["reply"] == "dois"
+    assert fresh.json()["reply"] == "tres"
+
+    def transcript(call_index: int) -> list[tuple[str, object]]:
+        return [
+            (message.type, message.content)
+            for message in model.calls[call_index]
+            if message.type != "system"
+        ]
+
+    assert ("human", "Meu nome é Ana") in transcript(1)
+    assert ("ai", "um") in transcript(1)
+    assert ("human", "Qual é o meu nome?") in transcript(1)
+    assert ("human", "Meu nome é Ana") not in transcript(2)
+    assert ("ai", "um") not in transcript(2)
+    assert ("human", "Olá de novo") in transcript(2)
