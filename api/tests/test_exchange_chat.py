@@ -282,6 +282,66 @@ def test_executing_a_claim_explains_the_policy_reports_deadlines_and_hands_off(
     assert_no_customer_contact(json.dumps(recorded, ensure_ascii=False), example)
 
 
+def test_executing_a_claim_on_an_undelivered_order_hands_off_without_a_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    example = ORDERS[8]
+
+    def reply(messages: list[BaseMessage]) -> AIMessage:
+        policy = _policy_sections(_tool_message(messages, "search_policies"), ("4",))
+        window = json.loads(_tool_message(messages, "check_return_window"))
+        handoff = _tool_message(messages, "record_handoff")
+        if window.get("deadlines") is not None or "Seção 4.1" not in policy:
+            return AIMessage(content="Pelo sistema, o prazo de 7 dias terminou em 06/10.")
+        return AIMessage(content=f"{policy}\n{handoff}")
+
+    model, client = _client(
+        monkeypatch,
+        [
+            ScriptedToolCall(
+                name="search_policies",
+                args={"query": "trocas por preferencia defeito arrependimento"},
+            ),
+            ScriptedToolCall(
+                name="check_return_window",
+                args={"order_number": 9, "phone_last_four": "5678"},
+            ),
+            ScriptedToolCall(
+                name="record_handoff",
+                args={
+                    "reason": "exchange_return_refund_warranty",
+                    "summary": "Cliente pediu devolução do pedido 9, ainda não entregue.",
+                    "order_id": 9,
+                },
+            ),
+            reply,
+        ],
+    )
+    with client:
+        response = client.post(
+            "/chat",
+            json={
+                "conversation_id": f"claim-undelivered-{uuid4()}",
+                "message": "Quero devolver o pedido 9. Os quatro dígitos são 5678.",
+            },
+        )
+
+    body = response.json()
+    assert body["handoff"]["reason"] == "exchange_return_refund_warranty"
+    assert "Seção 4.1" in body["reply"]
+    assert DURING_HOURS in body["reply"]
+    assert "Pelo sistema, o prazo" not in body["reply"]
+    assert "06/10" not in body["reply"]
+    assert_no_customer_contact(body["reply"], example)
+    window = json.loads(_tool_message(model.calls[2], "check_return_window"))
+    assert window["status"] == "confirmed"
+    assert window["deadlines"] is None
+    prompt = _system_text(model.calls[0]).casefold()
+    assert "não estiver entregue" in prompt
+    assert "não invente" in prompt
+    assert "exchange_return_refund_warranty" in prompt
+
+
 def test_asking_how_exchanges_work_explains_the_policy_without_a_handoff(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -434,6 +494,13 @@ def test_value_divergence_is_silent_until_the_customer_questions_the_amount(
             ),
             neutral,
             ScriptedToolCall(
+                name="lookup_order",
+                args={
+                    "order_number": example["order_number"],
+                    "phone_last_four": example["phone_last_four"],
+                },
+            ),
+            ScriptedToolCall(
                 name="search_policies",
                 args={"query": "desconto PIX preco de tabela"},
             ),
@@ -509,6 +576,13 @@ def test_value_question_on_an_order_without_payment_flags_hands_off(
                 },
             ),
             neutral,
+            ScriptedToolCall(
+                name="lookup_order",
+                args={
+                    "order_number": example["order_number"],
+                    "phone_last_four": example["phone_last_four"],
+                },
+            ),
             ScriptedToolCall(
                 name="search_policies",
                 args={"query": "pagamento PIX parcelas"},

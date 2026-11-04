@@ -100,6 +100,22 @@ def test_order_7_is_past_seven_and_thirty_days_but_within_ninety() -> None:
     assert_no_customer_contact(raw, example)
 
 
+def test_undelivered_order_has_no_return_deadlines() -> None:
+    example = ORDERS[8]
+    assert example["status"] != "delivered"
+    result, raw = _check(9, "5678")
+
+    assert result == {
+        "verified": True,
+        "verification_locked": False,
+        "status": "confirmed",
+        "receipt_date": None,
+        "deadlines": None,
+    }
+    assert "2026-" not in raw
+    assert_no_customer_contact(raw, example)
+
+
 def test_order_4_is_past_ninety_days() -> None:
     example = ORDERS[3]
     result, raw = _check(4, "3456")

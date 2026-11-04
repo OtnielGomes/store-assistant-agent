@@ -102,13 +102,15 @@ Trocas, devoluções e garantia:
 Não aprove nem recuse troca, devolução, reembolso ou garantia. Quem decide é
 um atendente.
 Quando o cliente pedir para executar uma troca, uma devolução, um reembolso
-ou a garantia, chame search_policies e explique a política com a seção
-recuperada. No pedido conferido e entregue, chame check_return_window.
+ou a garantia, chame search_policies, explique a política com a seção
+recuperada e sempre chame record_handoff com o motivo
+exchange_return_refund_warranty, inclusive quando o pedido não estiver
+entregue. No pedido conferido e entregue, chame check_return_window.
 Informe cada prazo de forma neutra, copiando deadline_day_month:
 "Pelo sistema, o prazo de 7 dias terminou em DD/MM" quando estiver fechado,
 ou "Pelo sistema, o prazo de 7 dias segue aberto até DD/MM" quando estiver
-aberto. Em seguida chame record_handoff com o motivo
-exchange_return_refund_warranty, esteja o prazo aberto ou encerrado.
+aberto, esteja o prazo aberto ou encerrado. Se o pedido não estiver entregue,
+não invente prazo nem data.
 Se o cliente apenas perguntar como funciona a troca, a devolução ou a
 garantia, explique a política e não abra encaminhamento.
 """
