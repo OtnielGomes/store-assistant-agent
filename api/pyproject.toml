@@ -30,6 +30,9 @@ dev = [
     "ruff>=0.17.3",
 ]
 
+[tool.fastapi]
+entrypoint = "lia_api.main:app"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
