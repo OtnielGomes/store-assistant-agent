@@ -12,7 +12,8 @@ from pydantic import BaseModel
 
 from lia_api.graph import build_graph
 from lia_api.model import build_chat_model, configure_langsmith
-from lia_api.settings import load_settings
+from lia_api.policies import Embedder, build_policy_search_tool, openai_embedder
+from lia_api.settings import Settings, load_settings
 
 
 class HealthResponse(BaseModel):
@@ -42,12 +43,30 @@ def _reply_text(content: str | list[str | dict[str, object]]) -> str:
     return "".join(parts)
 
 
-def create_app(model: BaseChatModel | None = None) -> FastAPI:
+def _lazy_openai_embedder(settings: Settings) -> Embedder:
+    holder: list[Embedder] = []
+
+    def embed(texts: list[str]) -> list[list[float]]:
+        if not holder:
+            holder.append(openai_embedder(settings))
+        return holder[0](texts)
+
+    return embed
+
+
+def create_app(
+    model: BaseChatModel | None = None,
+    embedder: Embedder | None = None,
+) -> FastAPI:
     settings = load_settings()
     configure_langsmith(settings)
     chat_model = model
     if chat_model is None and settings.openai_api_key:
         chat_model = build_chat_model(settings)
+    policy_tool = build_policy_search_tool(
+        settings.database_url,
+        embedder if embedder is not None else _lazy_openai_embedder(settings),
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -57,7 +76,7 @@ def create_app(model: BaseChatModel | None = None) -> FastAPI:
             return
         with PostgresSaver.from_conn_string(settings.database_url) as checkpointer:
             checkpointer.setup()
-            app.state.graph = build_graph(chat_model, checkpointer)
+            app.state.graph = build_graph(chat_model, checkpointer, tools=[policy_tool])
             yield
 
     app = FastAPI(title="Lia", lifespan=lifespan)
