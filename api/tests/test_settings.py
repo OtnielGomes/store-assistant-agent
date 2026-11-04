@@ -57,7 +57,7 @@ def test_startup_rejects_temperature_when_reasoning_effort_is_not_none(
     assert "OPENAI_REASONING_EFFORT" in message
 
 
-def test_chat_model_uses_zero_temperature_when_it_is_absent(
+def test_chat_model_omits_temperature_when_it_is_absent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _clear_configured_env(monkeypatch)
@@ -71,7 +71,7 @@ def test_chat_model_uses_zero_temperature_when_it_is_absent(
 
     assert "openai_temperature" not in settings.model_fields_set
     model = build_chat_model(settings)
-    assert model.temperature == 0
+    assert model.temperature is None
     assert model.reasoning_effort is None
 
 

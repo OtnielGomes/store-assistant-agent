@@ -22,7 +22,9 @@ def build_chat_model(settings: Settings) -> BaseChatModel:
         "use_responses_api": True,
     }
     if settings.openai_reasoning_effort == "none":
-        options["temperature"] = settings.openai_temperature
+        # gpt-6-luna rejects temperature=0; omit unless explicitly configured.
+        if "openai_temperature" in settings.model_fields_set:
+            options["temperature"] = settings.openai_temperature
     else:
         options["reasoning_effort"] = settings.openai_reasoning_effort
     return ChatOpenAI(**options)

@@ -13,7 +13,7 @@ docker compose up --build
 
 Abra http://127.0.0.1:3000 e converse com a Lia. A API escuta em http://127.0.0.1:8000 (`GET /health`, `POST /chat`).
 
-O `.env.example` lista todas as configurações. Os padrões do modelo são `gpt-6-luna`, esforço de raciocínio `none`, temperatura `0` e embeddings `text-embedding-3-small`. A inicialização falha quando `OPENAI_TEMPERATURE` está definida e `OPENAI_REASONING_EFFORT` não é `none`. Coloque uma `OPENAI_API_KEY` real no `.env` antes de esperar uma resposta ao vivo. O rastreamento no LangSmith segue `LANGSMITH_TRACING`, `LANGSMITH_API_KEY` e `LANGSMITH_PROJECT`.
+O `.env.example` lista todas as configurações. Os padrões do modelo são `gpt-6-luna`, esforço de raciocínio `none` e embeddings `text-embedding-3-small`. A temperatura só é enviada quando `OPENAI_TEMPERATURE` está definida, porque o `gpt-6-luna` rejeita `0`. A inicialização falha quando `OPENAI_TEMPERATURE` está definida e `OPENAI_REASONING_EFFORT` não é `none`. Coloque uma `OPENAI_API_KEY` real no `.env` antes de esperar uma resposta ao vivo. O rastreamento no LangSmith segue `LANGSMITH_TRACING`, `LANGSMITH_API_KEY` e `LANGSMITH_PROJECT`.
 
 O Compose publica o Postgres em `127.0.0.1:54330` e substitui `DATABASE_URL` dentro do container da API para usar o serviço `db`. Os testes da API no host usam esse banco publicado e um modelo de chat roteirizado, então não chamam a OpenAI:
 
